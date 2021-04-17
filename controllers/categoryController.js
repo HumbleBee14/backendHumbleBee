@@ -38,11 +38,11 @@ exports.list = (req, res) => {
 // Note: find ({}) -> Empty Parenthiesis/Object == return all the elements/categories
 
 
-// to get single category
+// to get single category   (& return all the blogs with that category)
 exports.read = (req, res) => {
   const slug = req.params.slug.toLowerCase();
 
-  // Finding the 'category' through the category-slug & below using that category response object to find all the blogs having that category
+  // Finding the 'category' through the category-slug & below using that category object response to find all the blogs having that category
   Category.findOne({ slug }).exec((err, category) => {
     if (err) {
       return res.stataus(400).json({
@@ -54,9 +54,9 @@ exports.read = (req, res) => {
 
     // Find all the blogs based on this Category (category objectID)(checking 'categories' field/column for the selected Blog's category in the Blog Model and return the blogs)
     Blog.find({ categories: category })
-      .populate('categories', 'id name slug')
-      .populate('tags', 'id name slug')
-      .populate('postedBy', '_id name')
+      .populate('categories', '_id name slug')
+      .populate('tags', '_id name slug')
+      .populate('postedBy', '_id name username profile')
       .select('_id title slug excerpt categories tags postedBy createdAt updatedAt')
       .exec((err, data) => {
         if (err) {

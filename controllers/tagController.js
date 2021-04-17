@@ -53,9 +53,9 @@ exports.read = (req, res) => {
 
     // Look for the selected 'tag' objectID inside the Blogs 'tags' field column & grab those blogs having same tag
     Blog.find({ tags: tag })
-      .populate('categories', 'id name slug')
-      .populate('tags', 'id name slug')
-      .populate('postedBy', '_id name')
+      .populate('categories', '_id name slug')
+      .populate('tags', '_id name slug')
+      .populate('postedBy', '_id name username profile')
       .select('_id title slug excerpt categories tags postedBy createdAt updatedAt')
       .exec((err, data) => {
         if (err) {

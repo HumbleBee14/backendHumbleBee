@@ -4,6 +4,7 @@ const Blog = require('../models/blog');
 const _ = require('lodash');
 const formidable = require('formidable');
 const fs = require('fs');
+const slugify = require('slugify');
 
 const { errorHandler } = require('../helpers/dbErrorHandler');
 
@@ -39,7 +40,7 @@ exports.publicProfile = (req, res) => {
         });
       }
 
-      user = userFromDB;
+      user = userFromDB; // selected User object 
 
       let userId = user._id;
 
@@ -47,6 +48,7 @@ exports.publicProfile = (req, res) => {
       user.photo = undefined; // we are not sending user profile Photo as this will make response heavy
       user.hashed_password = undefined; // Removing the hashed_password from the response
       user.salt = undefined; // Removing the hashed_password's SALT from the response
+      user.resetPasswordLink = undefined; // Could be a potential security Risk if passed to public Profile response
       // console.log("User Details --------->", user);
       // ---------------------------------------------
 
