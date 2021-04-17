@@ -264,7 +264,7 @@ exports.authMiddleware = (req, res, next) => {
         error: 'User not found'
       });
     }
-    req.profile = user;
+    req.profile = user; // passing User's data in the request to next function
     next();
   });
 };

@@ -90,45 +90,18 @@ exports.update = (req, res) => {
         error: 'Photo could not be uploaded'
       });
     }
-    // ------------------
-
     // else (we'll create the user if there's no error )
-    let user = req.profile; // 'profile' -(loggedin user object) is available (passed) in request object through the earlier middleware that is applied - 'authmiddleware'
-
-    // user's existing role and email before update
-    let existingRole = user.role;
-    let existingEmail = user.email;
-
-    // validations
-    if (fields && fields.username && fields.username.length > 12) {
-      return res.status(400).json({
-        error: 'Username should be less than 12 characters long'
-      });
-    }
-
-    if (fields.username) {
-      fields.username = slugify(fields.username).toLowerCase();
-    }
+    let user = req.profile; // 'profile' -(of loggedin user) is available in request object through the earlier middleware that is applied - 'authmiddleware'
+    user = _.extend(user, fields); // Changed 'fields' will be merged with the user using the extend Lodash method
 
     // ------------- Password Validator -----------------
 
-    // Note: Although we have same validation on backend /database model validation too, but it's better to handle these simple validations on frontned client side directly to reduce API calls    
     if (fields.password && fields.password.length < 6) {
       return res.status(400).json({
         error: 'Password should be min 6 characters long'
       });
     }
     // Note: we have not used Express validator here because that works only with json data, not Form data
-
-
-
-    user = _.extend(user, fields); // Changed 'fields' will be merged with the user using the extend Lodash method
-
-    // user's existing role and email - dont update - keep it same
-    user.role = existingRole;
-    user.email = existingEmail;
-
-
 
     // handling files - photos ----------------------
     if (files.photo) {
@@ -148,7 +121,6 @@ exports.update = (req, res) => {
     // now Saving to user object in DB
     user.save((err, result) => {
       if (err) {
-        console.log('profile udpate error', err);
         return res.status(400).json({
           error: errorHandler(err)
         });
@@ -160,6 +132,7 @@ exports.update = (req, res) => {
 
       res.json(user);
     });
+
 
   });
 

@@ -19,7 +19,7 @@ PW: testUserPassword
 
 ```
 
-////// Adding USER Profiles ///////////
+////////////// Adding USER Profiles ///////////////////
 
 1. create a 'route' in routes for public user profile
 2. Then add/create a middleware function to handle the requests on that route in the - user Controller & give the response through that middleware (this middleware will handle calls to database)
@@ -65,3 +65,45 @@ Soution: Check config SMTP, or if runnin on localmachine, DISABLE TURN OFF ANTIV
 -> Check ports opend and set environment = Production (backend) and set PRODUCTION: true on frontend in config files
 -> Update FB_APP_ID for SEO optmization
 // ---------------------------------------------------
+
+=======================================================
+
+# Configure Nginx on AWS to redirect Frontnend & Backend server requests to Correct Ports
+
+## Install Nginx -> sudo apt install nginx
+
+# Edit this file: default -> /etc/nginx/sites-available/default
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+Then restart nginx server:
+`sudo service nginx restart`
+
+// -----------------------------------------------------------
+
+// On code change, Pull the code on server using git:
+
+on Local Dev Machine:
+`git status`
+`git add .`
+`git commit -m "message"`
+`git push`
+
+on AWS :
+`git pull` (run this where the code is changed- backend or frontend)
