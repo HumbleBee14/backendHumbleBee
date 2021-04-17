@@ -39,8 +39,10 @@ mongoose.connect(process.env.DATABASE_CLOUD, { useNewUrlParser: true, useCreateI
 
 app.use(morgan('dev')); // dev =  in development mode
 app.use(bodyParser.json());   // Node.js body parsing middleware. Parse incoming request bodies in a middleware before your handlers, available under the req.body property.
+
 // app.use(bodyParser.json({ limit: "10mb" })); // To increase the request size limit
-app.use(cookieParser());
+
+app.use(cookieParser()); // // allows cookies to be accessed using req.cookies
 
 // CORS
 if (process.env.NODE_ENV === 'development') {
@@ -49,8 +51,8 @@ if (process.env.NODE_ENV === 'development') {
 
 // cors
 if (process.env.NODE_ENV === 'production') {
-  app.use(cors({ origin: `http://humblebee.live` }));
-  // app.use(cors({ origin: `https://humblebee.live` }));
+  // app.use(cors({ origin: `http://humblebee.live` }));
+  app.use(cors({ origin: `https://humblebee.live` }));
 }
 app.use(cors());
 
