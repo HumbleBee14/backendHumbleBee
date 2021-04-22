@@ -470,7 +470,7 @@ exports.googleLogin = (req, res) => {
 
   const idToken = req.body.tokenId;
 
-  // console.log("tokenID from client side", idToken);
+  console.log("tokenID from client side", idToken);
 
   // verify using the client
   client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID }).then(response => {

@@ -21,20 +21,25 @@ exports.read = (req, res) => {
 };
 
 
-// ----------------------------------------------
+// ----------------------------------------------------------------
 
 // for Public Profile (Response: User Public Profile + User's Blogs)
 exports.publicProfile = (req, res) => {
   let username = req.params.username; // 'username' will be passed through URL query parameters
 
-  let user;
+  // console.log("username in request --->", username);
 
+  let user;
   let blogs;
 
   User.findOne({ username })
     .exec((err, userFromDB) => {
 
       if (err || !userFromDB) {
+
+        console.log(`Error in finding '${username}' user --->`, err);
+
+
         return res.status(400).json({
           error: 'User not found!'
         });
@@ -44,11 +49,15 @@ exports.publicProfile = (req, res) => {
 
       let userId = user._id;
 
+
+      // console.log(" User.finOne called ------------------------\n");
+
       // ------------ REMOVING CERTAIN FEILDS ------------
       user.photo = undefined; // we are not sending user profile Photo as this will make response heavy
       user.hashed_password = undefined; // Removing the hashed_password from the response
       user.salt = undefined; // Removing the hashed_password's SALT from the response
       user.resetPasswordLink = undefined; // Could be a potential security Risk if passed to public Profile response
+      user.email = undefined; // Could be a potential security Risk if passed to public Profile response (if user does not want to reveal email)
       // console.log("User Details --------->", user);
       // ---------------------------------------------
 
@@ -62,6 +71,8 @@ exports.publicProfile = (req, res) => {
         .exec((err, data) => {
 
           if (err) {
+
+
             return res.status(400).json({
               error: errorHandler(err)
             });

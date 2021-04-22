@@ -300,8 +300,8 @@ exports.read = (req, res) => {
     .populate('postedBy', '_id name username')
     .select('_id title body slug mtitle mdesc categories tags postedBy createdAt updatedAt') // Note that we have returned (selected) body, meta-title and meta-description here => importatnt for SEO - search engine crawlers
     .exec((err, data) => {
-      console.log("err object--> ", err);
-      console.log("data object-->", data);
+      // console.log("err object--> ", err);
+      // console.log("data object-->", data);
 
       if (err) {
         console.log("ERROR OCCURED =====>  ", err);
@@ -390,7 +390,7 @@ exports.update = (req, res) => {
       //Note: (Right to Left Merge happens)
       oldBlog = _.merge(oldBlog, fields); // If anything changes, then only it'll be updated (New updated Column/fields will be Merged with oldBlogs columns), else it'll be merged without any change. 
 
-      console.log("After Merger", oldBlog);
+      // console.log("After Merger", oldBlog);
       oldBlog.slug = slugBeforeMerge; // Taking Precaution to keep it Old, in case someone manually passses slug parameter (to prevent this update)
 
 

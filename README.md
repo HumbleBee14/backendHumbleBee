@@ -72,6 +72,8 @@ Soution: Check config SMTP, or if runnin on localmachine, DISABLE TURN OFF ANTIV
 
 ## Install Nginx -> sudo apt install nginx
 
+## Nginx Server ERROR Logs: /var/log/nginx -----> error.log
+
 # Edit this file: default -> /etc/nginx/sites-available/default
 
     location / {
@@ -107,3 +109,68 @@ on Local Dev Machine:
 
 on AWS :
 `git pull` (run this where the code is changed- backend or frontend)
+
+=====================================================================================
+
+# Nginx server settings:
+
+---
+
+Refer: https://scaron.info/blog/improve-your-nginx-ssl-configuration.html
+// -----------------------------------------------------------------------
+
+# Default server configuration
+
+#
+
+server {
+listen 80 default_server;
+listen [::]:80 default_server;
+
+# server_name humblebee.live www.humblebee.live;
+
+# Redirect http to https (Disable it if you are using Cloudflare HTTPS redirect)
+
+# return 301 https://$server_name$request_uri;
+
+# return 301 https://$host$request_uri;
+
+        # SSL configuration
+        #
+         listen 443 ssl http2 default_server;
+         listen [::]:443 ssl http2 default_server;
+        #
+
+        ssl_certificate /etc/nginx/ssl/certs/humblebee.pem;
+        ssl_certificate_key /etc/nginx/ssl/private/humblebeeKEY.pem;
+
+        # Note: You should disable gzip for SSL traffic.
+
+        root /var/www/html;
+
+        # Add index.php to the list if you are using PHP
+        index index.html index.htm index.nginx-debian.html;
+
+        server_name _;
+
+location /api {
+proxy_pass http://localhost:8000;
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection 'upgrade';
+proxy_set_header Host $host;
+proxy_cache_bypass $http_upgrade;
+}
+
+location / {
+proxy_pass http://localhost:3000;
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection 'upgrade';
+proxy_set_header Host $host;
+proxy_cache_bypass $http_upgrade;
+}
+
+}
+
+# //--------------------------------------------------------------
