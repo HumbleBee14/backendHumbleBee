@@ -376,6 +376,27 @@ npm install html-to-text (convert html to text)
 
 # Setup Unix server
 
+sudo apt install htop
+
+// -----------------------------------------------------
+// Create a New user with ADMIN Rights
+
+Logi as root user, then
+
+`sudo adduser newRootUser`
+Enter Password
+usermod -aG sudo newRootUser (run as root user)
+
+Now remove login rights for ROOT user
+
+Now Check by signin with new user: sudo su newRootUser
+
+`sudo su newRootUser`
+
+Exit and relogin as new root user and then remove access to root user login
+
+// ------------------------------------------------------
+
 Check Open ports listening to:
 `netstat -ntlp | grep LISTEN`
 
@@ -386,10 +407,20 @@ To find the process PID running on a specific PORT:
 To Kill process running on port :
 `sudo kill -9 $(sudo lsof -t -i:3000)`
 
-Inntall nginx - https://www.digitalocean.com/community/tutorials/how-to-install-nginx-on-ubuntu-18-04-quickstart
+Install nginx - https://www.digitalocean.com/community/tutorials/how-to-install-nginx-on-ubuntu-18-04-quickstart
 
 1. Create a sudo user (& disable root - security reason)
 2. Install `nodejs`, `npm` & `nginx`
+   -sudo install install nginx
+
+- sudo vi /etc/nginx/nginx.conf (Set worker_processes value to auto)
+- sudo /etc/init.d/nginx start
+
+// Install Nodejs:
+--> curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+--> . ~/.nvm/nvm.sh
+--> nvm install node
+
 3. Setup / Configure `nginx` server to host frontend & backend to two different ports
 
 cd /etc/nginx/sites-available
@@ -443,6 +474,8 @@ Paste this code:
 
 #---------------------------------------------------------------------------
 
+// NOTE: Make sure to open both 8000 & 3000 (As per your app) for both backend and frontend ports
+
 # FOR enabling HTTPS on Nginx:
 
 --> Inside /etc/nginx/sites-available/default
@@ -455,8 +488,8 @@ server {
 }
 server {
        listen 443 ssl;
-server_name example.com web.example.com
-;
+      server_name example.com web.example.com;
+
        # Certificate
        ssl_certificate /etc/nginx/ssl/certs/nginx-selfsigned.crt;
 
@@ -494,13 +527,18 @@ Refer: https://www.digitalocean.com/community/tutorials/how-to-create-a-self-sig
 
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/private/nginx-selfsigned.key -out /etc/nginx/ssl/certs/nginx-selfsigned.crt
 
+Refer this for setting up HTTPS on NGINX with SSL
+`https://sunscrapers.com/blog/setting-up-https-on-nginx-with-certbot-and-letsencrypt/`
+
 generate dhparam file
 => openssl dhparam -out dhparam.pem 1024
+OR
+=> sudo openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
 
 As always make sure to backup your config before making the changes and also run a Nginx config test before restarting Nginx:
 
 Test Nginx Configuration:-
-$ `service nginx configtest`
+$ `sudo service nginx configtest`
 $ `sudo nginx -t`
 
 Basic Nginx commands:-
@@ -515,7 +553,7 @@ $ `sudo service nginx restart`
 $ `sudo systemctl restart nginx`
 Reload Nginx:-
 $ service nginx reload
-$ systemctl reload nginx
+$ sudo systemctl reload nginx
 Status Nginx:-
 $ service nginx status
 $ systemctl status nginx
@@ -572,6 +610,7 @@ Check status: sudo systemctl status mongodb
 .
 then start server - `npm start` (but this will stop if you close terminal).
 So run this as daemon process using `pm2`
+Monitor all processes: `pm2 monit`
 Refer below
 .//-------------------------------------------------------------------------
 ===========================================
@@ -633,7 +672,20 @@ $ sudo ufw status numbered
 
 $ sudo ufw delete 3
 
-// --------------------------------------------------------------------
+======================================
+// Isntall SSL certificate using LetsEncrypt
+
+// sudo apt install certbot
+
+// sudo ufw allow 80
+
+Stop Nginx before generating certificate
+
+// sudo systemctl stop nginx
+
+// sudo certbot certonly --standalone --rsa-key-size 4096 --agree-tos --preferred-challenges http -d <domain-name>
+
+//--------------------------------------------------------------------
 // Basic Linux commnads:
 
 Check API : curl http://<.Domain OR IP Address.>/api
@@ -643,6 +695,8 @@ PM2 - Application daemon manager:
 
 PM2 is a Production Process Manager for Node.js applications
 with a built-in Load Balancer.
+
+Monitor all processes launched: `pm2 monit`
 
                 Start and Daemonize any application:
                 $ pm2 start app.js

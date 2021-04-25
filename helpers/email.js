@@ -14,17 +14,22 @@ exports.sendEmailWithNodemailer = (req, res, emailData, customMsg) => {
 
   const transporter = nodeMailer.createTransport({
     host: "smtp.gmail.com", // hostname
-    port: 587, // port for secured SMTP server
+    //port: 587, //587 port for secured SMTP server (secure:true) // 465 for secure: false
     secure: false, // use SSL
-    requireTLS: true,
+    // requireTLS: true,
     auth: {
       user: "contactdy14@gmail.com", // MAKE SURE THIS EMAIL IS YOUR GMAIL FOR WHICH YOU GENERATED APP PASSWORD
       pass: "neuvqyvcszrbsiho", // MAKE SURE THIS PASSWORD IS YOUR GMAIL APP PASSWORD WHICH YOU GENERATED EARLIER
+      // pass: process.env.EMAILPASS
     },
-    tls: {
-      ciphers: "SSLv3",
-      // rejectUnauthorized: false
-    },
+    // tls: {
+    //   ciphers: "SSLv3",
+    //   // rejectUnauthorized: false
+    // },start
+
+    debug: true, // show debug output
+    logger: true // log information in console
+
   });
 
 
@@ -52,6 +57,7 @@ exports.sendEmailWithNodemailer = (req, res, emailData, customMsg) => {
       return res.status(502).json(
         {
           error: `${err}. Please contact :Dev team`, // Error Message
+          // message: `${err}. Please contact :Dev team`, // Error Message
           success: false,
           ErrorCode: err // Object inside object (complex object)
           // Note: We should NOT send Complex objects to Frontend, as they can not handle complex objects. Use Array instead. Else, make sure to send those object properties as string which are accesed on the Frontend (in our case, we are are using 'error' property of this response on Frontend, therefore make if plain string,not complex Object like ErrorCode)
