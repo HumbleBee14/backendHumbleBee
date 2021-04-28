@@ -8,7 +8,8 @@ const cors = require('cors');
 require('dotenv').config(); // Environment Variables from .env file
 
 // ------------
-
+const https = require('https'); // for HTTPS secured server
+const fs = require('fs'); // To Read Files from File System
 
 // ------------
 
@@ -24,12 +25,6 @@ const tagRoutes = require('./routes/tag');
 const formRoutes = require('./routes/form');
 
 const imageHandler = require('./routes/image'); // Under Development
-
-
-
-const https = require('https'); // for HTTPS secured server
-const fs = require('fs'); // To Read Files from File System
-
 
 
 
@@ -115,29 +110,42 @@ const port = process.env.PORT || 8000;
 
 if (process.env.NODE_ENV === 'production') {
   // SSL Key Certificates (generated using LetsEncrypt)
-  var key = fs.readFileSync('/etc/letsencrypt/live/humblebee.live/privkey.pem');
-  var cert = fs.readFileSync('/etc/letsencrypt/live/humblebee.live/fullchain.pem');
-  var options = {
-    key: key,
-    cert: cert
-  };
+  var path = '/etc/letsencrypt/live/humblebee.live/fullchain.pem';
 
-  // -----------------------------------
-  // Creating HTTPS Server
-  var server = https.createServer(options, app);
+  if (fs.existsSync(path)) {
+    var key = fs.readFileSync('/etc/letsencrypt/live/humblebee.live/privkey.pem');
+    var cert = fs.readFileSync('/etc/letsencrypt/live/humblebee.live/fullchain.pem');
+    var options = {
+      key: key,
+      cert: cert
+    };
 
-  server.listen(port, '127.0.0.1', (err) => {
+    // -----------------------------------
+    // Creating HTTPS Server
+    var server = https.createServer(options, app);
+
+    server.listen(port, '127.0.0.1', (err) => {
+      if (err) throw err;
+      console.log(`HTTPS (PROD) Server is Running on ${port}`);
+    });
+  }
+
+  // If there's no SSL Key present, run HTTP server
+  app.listen(port, '127.0.0.1', (err) => {
+    // app.listen(port, (err) => {
     if (err) throw err;
-    console.log(`HTTPS Server is Running on ${port}`);
+    console.log(`HTTP (PROD) Server is Running on ${port}`);
   });
-}
+};
+
 
 // On Local Dev Server
 if (process.env.NODE_ENV === 'development') {
 
-  app.listen(port, '127.0.0.1', (err) => {
+  app.listen(port, (err) => {
     // app.listen(port, (err) => {
     if (err) throw err;
-    console.log(`Local Server is Running on ${port}`);
+    console.log(`HTTP (DEV) Server is Running on ${port}`);
   });
 }
+

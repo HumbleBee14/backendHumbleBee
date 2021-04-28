@@ -398,7 +398,7 @@ Exit and relogin as new root user and then remove access to root user login
 // ------------------------------------------------------
 
 Check Open ports listening to:
-`netstat -ntlp | grep LISTEN`
+`sudo netstat -ntlp | grep LISTEN`
 
 To find the process PID running on a specific PORT:
 
@@ -406,6 +406,10 @@ To find the process PID running on a specific PORT:
 
 To Kill process running on port :
 `sudo kill -9 $(sudo lsof -t -i:3000)`
+
+OR
+Kill Processes by patter / name
+`pkill -f my_pattern`
 
 Install nginx - https://www.digitalocean.com/community/tutorials/how-to-install-nginx-on-ubuntu-18-04-quickstart
 
@@ -420,6 +424,10 @@ Install nginx - https://www.digitalocean.com/community/tutorials/how-to-install-
 --> curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
 --> . ~/.nvm/nvm.sh
 --> nvm install node
+
+Server Logs
+/var/log/nginx/access.log: Every request to your web server is recorded in this log file unless Nginx is configured to do otherwise.
+/var/log/nginx/error.log: Any Nginx errors will be recorded in this log.
 
 3. Setup / Configure `nginx` server to host frontend & backend to two different ports
 
@@ -708,7 +716,9 @@ Monitor all processes launched: `pm2 monit`
                 $ pm2 monitor
 
                 Make pm2 auto-boot at server restart:
-                $ pm2 startup
+                 For automatically running PM2 when the server restarts, issue the following command:
+
+                $ sudo pm2 startup
 
                 & run the given command
 
