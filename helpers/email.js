@@ -27,8 +27,8 @@ exports.sendEmailWithNodemailer = (req, res, emailData, customMsg) => {
     //   // rejectUnauthorized: false
     // },start
 
-    debug: true, // show debug output
-    logger: true // log information in console
+    // debug: true, // show debug output
+    // logger: true // log information in console
 
   });
 
@@ -42,13 +42,13 @@ exports.sendEmailWithNodemailer = (req, res, emailData, customMsg) => {
       // If the user has provided any custom success message through parameter for sending through the response, send that custom message in response
       if (customMsg) {
         return res.json({
-          success: true,
+          success: true, // sending this to frontend
           message: customMsg
         });
       }
 
       return res.json({
-        success: true,
+        success: true, // sending this to frontend
         message: `Email has been successfully sent to ${emailData.to}`
       });
     })
@@ -56,8 +56,8 @@ exports.sendEmailWithNodemailer = (req, res, emailData, customMsg) => {
       console.log(`Problem sending email _:_ ${err}`);
       return res.status(502).json(
         {
-          error: `${err}. Please contact :Dev team`, // Error Message
-          // message: `${err}. Please contact :Dev team`, // Error Message
+          error: `${err}. Unable to send email! Please contact :Dev`, // Error Message
+          // message: `${err}. Unable to send email. Please contact Dev team`, // Error Message
           success: false,
           ErrorCode: err // Object inside object (complex object)
           // Note: We should NOT send Complex objects to Frontend, as they can not handle complex objects. Use Array instead. Else, make sure to send those object properties as string which are accesed on the Frontend (in our case, we are are using 'error' property of this response on Frontend, therefore make if plain string,not complex Object like ErrorCode)

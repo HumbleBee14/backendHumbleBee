@@ -50,7 +50,8 @@ mongoose.connect(process.env.DATABASE_CLOUD, { useNewUrlParser: true, useCreateI
 /*
 app.use(function (req, res, next) {
   // res.setHeader("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Origin", "*");
+  // res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Origin", "https://humblebee.live");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });

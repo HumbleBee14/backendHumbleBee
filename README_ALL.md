@@ -226,7 +226,44 @@ So that means text did not match between the server renderd and client rendered.
 This is nothing to worry but if you want you can render certain content only on the client side by confirming you are in the client mode:
 
 ```
+// Run only on client side/ browser
+
+Refer: https://blog.hao.dev/render-client-side-only-component-in-next-js
+
+if (process.browser) {
+    // on browser
+}
+
+=== :
 `{process.browser && <>Now you are in client side. Fetch user info from local storage and show here</>}`
+```
+
+# typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
+```
+You can fetch client-side only data using the useEffect Hook.
+
+import {useEffect} from 'react'
+useEffect(()=>{
+return =>{
+ // clean-up functions
+ }
+},[])
+
+The first argument Is a function and you can make your API calls inside this.
+
+The second argument to the useEffect will determine when the useEffect should be triggered. If you pass an empty array [ ], then the useEffect will only be fired when the component Mounts. If you want the useEffect to fire if any props change then pass such props as a dependency to the array.
+
+    useEffect(()=>{
+     Make API call and setState
+     return =>{
+       // clean-up functions
+       }
+    },[props])
+
+If you want GET_CURRENT_USER_QUERY from the query string you can pass the argument from the getInitailProps and read this as props in the useEffect array dependency.
+
+ If you want the data to be defined on server side, use `getInitailProps` on the page which the form is in. That way you can retrieve the data from props and pass it to your form component.
 ```
 
 //------------------------------------------
@@ -306,6 +343,17 @@ export default UserRoute;
 // -----------------------------------------------------------
 
 - ( process.browser ) = true if the code is running on BROWSER (client side) and = false if running on server side (nodejs) backend.
+
+//--------------------------------------------------------------------------------
+
+WYSWYG Rich Text Editor CKEDITOR / QUILL
+
+Refer: https://teachsomebody.com/blog/view/9oLqSUeN7yWEesUhG8YMd/how-to-use-ckeditor5-in-a-react-or-nextjs-application
+
+npm i @ckeditor/ckeditor5-react
+
+npm i @ckeditor/ckeditor5-editor-inline
+npm i @ckeditor/ckeditor5-build-classic
 
 //------------------------------------------------------------------------------------------------
 // Difference between LOCAL STORAGE & COOKIES
