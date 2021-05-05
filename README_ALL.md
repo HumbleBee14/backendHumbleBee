@@ -630,6 +630,10 @@ sudo systemctl restart nginx
 
 and make change in configuration files like .env (production mode) and .next.config.js
 
+// Note: To ignore local changes and pull fresh copy from git,
+git reset --hard
+git pull
+
 ####
 
 After setting up everything, You need install all the dependencies (node modules) for both backend and frontend.
