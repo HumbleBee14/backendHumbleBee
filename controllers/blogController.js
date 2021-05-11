@@ -519,7 +519,9 @@ exports.photo = (req, res) => {
           // console.log(Object.keys(photoBlog._doc.photo).length === 0); // Check length (Empty Object) of object
           */
 
-          console.log(`WARNING: No Featured Image present in this Blog. Please upload a photo in blog with id: ${photoBlog._doc._id} `);
+          // -------------------------------------
+          // console.log(`WARNING: No Featured Image present in this Blog. Please upload a photo in blog with id: ${photoBlog._doc._id} `);
+          // -------------------------------------
 
           // throw new Error('something bad happened');
 
