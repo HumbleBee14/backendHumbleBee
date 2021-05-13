@@ -213,6 +213,7 @@ exports.list = (req, res) => {
     .populate('categories', '_id name slug')
     .populate('tags', '_id name slug')
     .populate('postedBy', '_id name username')
+    .sort({ updatedAt: -1 }) // Sorting the Blogs list (latest comes first)
     .select('_id title slug excerpt categories tags postedBy createdAt updatedAt') // Note that we aren't taking 'photos' field here because that'd be very big (binary coded here in DB) and that'll make it very slow
     .exec((err, data) => {
       if (err) {
@@ -224,6 +225,44 @@ exports.list = (req, res) => {
     });
 
 };
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+// ---------------------------------------------------------------
+
+// List / send All the Blogs created by this specific user based on username
+
+exports.listBlogsByUser = (req, res) => {
+  User.findOne({ username: req.params.username }) // Finding the User with this username first
+    .exec((err, user) => {
+      if (err) {
+        return res.status(400).json({
+          error: errorHandler(err)
+        });
+      }
+      // We found the user
+      let userId = user._id; // grabbing the User ID of the User to find the blogs by his user ID (in postedBy)
+
+      // .select('_id title slug excerpt categories tags postedBy createdAt updatedAt');
+
+      Blog.find({ postedBy: userId })
+        .populate('categories', '_id name slug')
+        .populate('tags', '_id name slug')
+        .populate('postedBy', '_id name username')
+        .sort({ updatedAt: -1 }) // Sorting the Blogs list (latest comes first)
+        .select('_id title slug postedBy createdAt updatedAt')
+        .exec((err, data) => {
+          if (err) {
+            return res.status(400).json({
+              error: errorHandler(err)
+            });
+          }
+
+          res.json(data); // returning all the Blogs of this User details based on username 
+        });
+    });
+};
+
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
@@ -633,42 +672,7 @@ exports.listSearch = (req, res) => {
 
 };
 
-
-// ---------------------------------------------------------------
-
-// List All the Blogs created by this user (username)
-
-exports.listBlogsByUser = (req, res) => {
-  User.findOne({ username: req.params.username }) // Finding the User with this username first
-    .exec((err, user) => {
-      if (err) {
-        return res.status(400).json({
-          error: errorHandler(err)
-        });
-      }
-      // We found the user
-      let userId = user._id; // grabbing the User ID of the User to find the blogs by his user ID (in postedBy)
-
-      // .select('_id title slug excerpt categories tags postedBy createdAt updatedAt');
-
-      Blog.find({ postedBy: userId })
-        .populate('categories', '_id name slug')
-        .populate('tags', '_id name slug')
-        .populate('postedBy', '_id name username')
-        .select('_id title slug postedBy createdAt updatedAt')
-        .exec((err, data) => {
-          if (err) {
-            return res.status(400).json({
-              error: errorHandler(err)
-            });
-          }
-
-          res.json(data); // returning all the Blogs of this User details based on username 
-        });
-    });
-};
-
-
+// -------------------------------------------------------------------------------------------------------------------
 
 
 // ############## NOTES ###################

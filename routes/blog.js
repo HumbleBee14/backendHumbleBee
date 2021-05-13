@@ -23,9 +23,9 @@ const {
 // Crete a new Blog route (for ADMIN)
 router.post('/blog', requireSignin, adminMiddleware, create);
 
-router.get('/blogs', list); // get/list all the blogs
+router.get('/blogs', list); // get / list all the blogs of every author [this API is used by BLOG MANAGE Page to get list of all the Blogs available in DB]
 
-router.post('/blogs-categories-tags', listAllBlogsCategoriesTags); // get all the blogs alongwith all the Categories & tags also (useful for SEO optimization)
+router.post('/blogs-categories-tags', listAllBlogsCategoriesTags); // [using this for /blogs page] to get all the blogs alongwith all the Categories & tags also (useful for SEO optimization)
 // NOTE: Note that the above request is POST method, why? Because we'll get some parameters from client side so that we'll not load all the blogs at once, but few only and than will Load More as requested. (Some queries will be Passed to sort the Listing). i.e will be used with 'PAGINATION'
 
 router.get('/blog/:slug', read); // get a single blog 
@@ -42,7 +42,6 @@ router.get('/blog/photo/:slug', photo);
 router.post('/blogs/related', listRelatedBlogs);
 
 router.get('/blogs/search', listSearch); // for Searching Blogs
-
 
 
 
