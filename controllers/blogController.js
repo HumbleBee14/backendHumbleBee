@@ -43,6 +43,7 @@ process.on('uncaughtException', err => {
 
 
 // -----------------------------------------------------------------
+// Create New Blog 
 exports.create = (req, res) => {
 
   // Step 1: get the data from FORM
@@ -99,7 +100,13 @@ exports.create = (req, res) => {
     // blog.excerpt = smartTrim(body, 320, ' ', ' ...'); // Author's trim method
     blog.excerpt = htmlToTextTrimWithEllipses(body, 320); // My own trim method (ignores href)
 
-    blog.slug = slugify(title).toLowerCase();
+    blog.slug = slugify(title)
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    // .replace(/['"]+/g, '');
 
     blog.mtitle = `${title} | ${process.env.APP_NAME}`; // blog meta-title = > title | APP NAME e.g. HOW TO FILL ITR | SEO BLOG
 
