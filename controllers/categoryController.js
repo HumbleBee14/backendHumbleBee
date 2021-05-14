@@ -7,7 +7,12 @@ const { errorHandler } = require('../helpers/dbErrorHandler');
 // create a category
 exports.create = (req, res) => {
   const { name } = req.body;
-  let slug = slugify(name).toLowerCase();
+  let slug = slugify(name)
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
   let category = new Category({ name, slug });
 
@@ -23,7 +28,7 @@ exports.create = (req, res) => {
 };
 
 
-// to get all the categories
+// to get list of all the categories
 exports.list = (req, res) => {
 
   Category.find({}).exec((err, data) => {

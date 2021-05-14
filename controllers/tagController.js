@@ -7,7 +7,12 @@ const { errorHandler } = require('../helpers/dbErrorHandler');
 // create a tag
 exports.create = (req, res) => {
   const { name } = req.body;
-  let slug = slugify(name).toLowerCase();
+  let slug = slugify(name)
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
   let tag = new Tag({ name, slug });
 
