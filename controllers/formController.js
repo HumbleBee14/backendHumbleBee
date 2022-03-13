@@ -32,7 +32,7 @@ exports.contactForm = (req, res) => {
           <p>Sender message: ${message}</p>
           <hr/>
           <p>This email may contain sensitive information</p>
-          <p>https://humblebee.live 🐝</p>
+          <p>https://grepguru.com 🐝</p>
         `,
   };
 
@@ -70,7 +70,7 @@ exports.contactBlogAuthorForm = (req, res) => {
           <p>Message: ${message}</p>
           <hr/>
           <p>This email may contain sensitive information</p>
-          <p>https://humblebee.live 🐝</p>
+          <p>https://grepguru.com🐝</p>
         `,
   };
 

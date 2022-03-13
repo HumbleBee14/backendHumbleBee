@@ -52,7 +52,7 @@ exports.preSignup = (req, res) => {
       to: email,
       subject: 'Account activation link',
       html: `
-            <h4>Thanks for your interest in creating an account on our super amazing website. We are excited to make you part of our HumbleBee family 🤩<h4>
+            <h4>Thanks for your interest in creating an account on our super amazing website. We are excited to make you part of our grepGuru community 🤩<h4>
             <hr/>
             <p>Please use the following link to actiavte your account:</p>
             <h5 class="text-muted">(Email valid only for 10 minutes)</h5>
@@ -61,7 +61,7 @@ exports.preSignup = (req, res) => {
             <br/>
             <hr/>
             <p>This email may contain sensitive information. Please don't share it with anyone.</p>
-            <p>https://humblebee.live 🐝</p>
+            <p>https://grepguru.com 🐝</p>
           `
     };
 
@@ -367,7 +367,7 @@ exports.forgotPassword = (req, res) => {
             <br/>
             <hr/>
             <p>This email may contain sensitive information</p>
-            <p>https://humblebee.live 🐝</p>
+            <p>https://grepguru.com 🐝</p>
           `
     };
 
