@@ -257,7 +257,7 @@ export function listBlogsByUser(req, res) {
 
 // List all Blogs (with Category & Tags) on the /blogs page
 
-export function listAllBlogsCategoriesTags(req, res) {
+export async function listAllBlogsCategoriesTags(req, res) {
   // get and Send all the blogs along with all the Categories & tags also (useful for SEO optimization)
 
   // Kind of PAGINATION
@@ -274,50 +274,38 @@ export function listAllBlogsCategoriesTags(req, res) {
   let tags;
 
 
-  Blog.find({})
-    .populate('categories', '_id name slug')
-    .populate('tags', '_id name slug')
-    .populate('postedBy', '_id name username profile')
-    .sort({ createdAt: -1 }) // Sorting the Blogs list (latest comes first)
-    .skip(skip)
-    .limit(limit)
-    .select('_id title slug excerpt categories tags postedBy createdAt updatedAt')
-    .exec((err, data) => {
-      if (err) {
-        return res.json({
-          error: errorHandler(err)
-        });
-      }
+  try {
+    const data = await Blog.find({})
+      .populate('categories', '_id name slug')
+      .populate('tags', '_id name slug')
+      .populate('postedBy', '_id name username profile')
+      .sort({ createdAt: -1 }) // Sorting the Blogs list (latest comes first)
+      .skip(skip)
+      .limit(limit)
+      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt')
+      .exec();
 
-      blogs = data; // blogs
+    blogs = data; // blogs
 
-      // -----------------------------------------------
-      // get all categories
-      Category.find({}).exec((err, c) => {
-        if (err) {
-          return res.json({
-            error: errorHandler(err)
-          });
-        }
-        categories = c; // categories
+    // -----------------------------------------------
+    // get all categories
+    const c = await Category.find({}).exec();
+    categories = c; // categories
 
-        //-----------------------------------------------
-        //get all tags
-        Tag.find({}).exec((err, t) => {
-          if (err) {
-            return res.json({
-              error: errorHandler(err)
-            });
-          }
-          tags = t; // tags
+    //-----------------------------------------------
+    //get all tags
+    const t = await Tag.find({}).exec();
+    tags = t; // tags
 
-          //-----------------------------------------------
-          //return all blogs, categories and Tags
-          res.json({ blogs, categories, tags, size: blogs.length }); // We will use current size of blogs returned to frontend, for LOAD MORE button on frontend
+    //-----------------------------------------------
+    //return all blogs, categories and Tags
+    res.json({ blogs, categories, tags, size: blogs.length }); // We will use current size of blogs returned to frontend, for LOAD MORE button on frontend
 
-        });
-      });
+  } catch (err) {
+    return res.json({
+      error: errorHandler(err)
     });
+  }
 
 }
 

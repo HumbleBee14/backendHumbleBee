@@ -107,10 +107,10 @@ app._router.stack.forEach((layer) => {
     layer.handle.stack.forEach((subLayer) => {
       if (subLayer.route) {
         console.log(`✅ Registered Route: ${Object.keys(subLayer.route.methods).map(m => m.toUpperCase()).join(', ')} ${subLayer.route.path}`);
+      } else {
+        console.log(`❌ Unregistered Route: ${subLayer.name}`);
       }
     });
-  } else {
-    console.log("❌ Unable to Register Routes");
   }
 });
 console.log("\n✅ Finished Listing Routes\n");
