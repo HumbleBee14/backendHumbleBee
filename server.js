@@ -84,7 +84,7 @@ if (process.env.NODE_ENV === 'production') {
   // app.use(cors({ origin: `http://humblebee.live` }));
   // app.use(cors({ origin: `https://humblebee.live` }));
   // app.use(cors({ origin: `https://15.206.70.165` }));
-  // app.use(cors({ origin: '*' }));
+   app.use(cors({ origin: '*' }));
 }
 // app.use(cors());
 
