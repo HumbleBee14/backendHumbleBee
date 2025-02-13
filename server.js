@@ -38,7 +38,42 @@ const app = express();
 // Database Connection
 
 // Cloud Database  (Cloud DB)
-mongoose.connect(process.env.DATABASE_CLOUD, { useNewUrlParser: true, useCreateIndex: true, useFindAndModify: false, useUnifiedTopology: true }).then(() => console.log('DB Connected'));
+/*
+mongoose.connect(process.env.DATABASE_CLOUD, {
+  useNewUrlParser: true,
+  useCreateIndex: true,
+  useFindAndModify: false,
+  useUnifiedTopology: true
+})
+.then(() => console.log('DB Connected'))
+.catch((err) => console.log('❌ DB Connection Error:', err));
+*/
+
+mongoose.connect(process.env.DATABASE_CLOUD, {
+  useNewUrlParser: true,
+  useCreateIndex: true,
+  useFindAndModify: false,
+  useUnifiedTopology: true
+});
+
+const db = mongoose.connection;
+
+// Log success
+db.on('connected', () => {
+  console.log('✅ MongoDB Connected Successfully:', process.env.DATABASE_CLOUD);
+});
+
+// Log errors
+db.on('error', (err) => {
+  console.log('❌ MongoDB Connection Error:', err);
+});
+
+// Log when disconnected
+db.on('disconnected', () => {
+  console.log('⚠️ MongoDB Disconnected. Retrying...');
+});
+
+
 // Note: 
 
 
