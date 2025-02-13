@@ -1,66 +1,34 @@
 const express = require('express');
 const morgan = require('morgan');
-const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const https = require('https');
+const fs = require('fs');
 
-require('dotenv').config(); // Environment Variables from .env file
+require('dotenv').config();
+// ---------------------------------------------
 
-// ------------
-const https = require('https'); // for HTTPS secured server
-const fs = require('fs'); // To Read Files from File System
-
-// ------------
-
-
-// -------------------------------------------------------
-
-// bring routes
 const blogRoutes = require('./routes/blog');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const categoryRoutes = require('./routes/category');
 const tagRoutes = require('./routes/tag');
 const formRoutes = require('./routes/form');
-
 const imageHandler = require('./routes/image'); // Under Development
 
-
-
 //-------------------------------------------------------------------------
-
-// app
 const app = express();
 
-
-
 // Database Connection
-
 // Cloud Database  (Cloud DB)
-/*
-mongoose.connect(process.env.DATABASE_CLOUD, {
-  useNewUrlParser: true,
-  useCreateIndex: true,
-  useFindAndModify: false,
-  useUnifiedTopology: true
-})
-.then(() => console.log('DB Connected'))
-.catch((err) => console.log('❌ DB Connection Error:', err));
-*/
-
-mongoose.connect(process.env.DATABASE_CLOUD, {
-  useNewUrlParser: true,
-  useCreateIndex: true,
-  useFindAndModify: false,
-  useUnifiedTopology: true
-});
+mongoose.connect(process.env.DATABASE_CLOUD, {});
 
 const db = mongoose.connection;
 
 // Log success
 db.on('connected', () => {
-  console.log('✅ MongoDB Connected Successfully:', process.env.DATABASE_CLOUD);
+  console.log('✅ MongoDB Connected Successfully:');
 });
 
 // Log errors
@@ -74,20 +42,19 @@ db.on('disconnected', () => {
 });
 
 
-// Note: 
-
-
 // Local Database  (Local DB)
 // mongoose.connect(process.env.DATABASE_LOCAL, { useNewUrlParser: true, useCreateIndex: true, useFindAndModify: false, useUnifiedTopology: true }).then(() => console.log('DB Connected'));
 
-// middlewares
+// ===============================
+//            Middlewares 
+// ===============================
 
 /*
 app.use(function (req, res, next) {
   // res.setHeader("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, PUT, POST");
-  // res.header("Access-Control-Allow-Origin", "https://humblebee.live");
+  // res.header("Access-Control-Allow-Origin", "https://grepguru.com");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });
@@ -97,7 +64,6 @@ app.use(function (req, res, next) {
 app.use(morgan('dev')); // dev =  in development mode
 
 // app.use(bodyParser.json());   // Node.js body parsing middleware. Parse incoming request bodies in a middleware before your handlers, available under the req.body property.
-
 // app.use(bodyParser.json({ limit: "10mb" })); // To increase the request size limit - DEPRECATED
 
 app.use(express.json({ limit: "10mb" })); //Used to parse JSON bodies (New)
@@ -106,11 +72,10 @@ app.use(express.json({ limit: "10mb" })); //Used to parse JSON bodies (New)
 
 app.use(cookieParser()); // // allows cookies to be accessed using req.cookies
 
-
-
 // CORS
 if (process.env.NODE_ENV === 'development') {
   app.use(cors({ origin: `${process.env.CLIENT_URL}` })); // http://localhost:3000
+  app.use(cors({ origin: '*' }));
 }
 
 // CORS     (Refer: https://www.npmjs.com/package/cors#configuring-cors-w-dynamic-origin)
@@ -121,7 +86,6 @@ if (process.env.NODE_ENV === 'production') {
   // app.use(cors({ origin: `https://15.206.70.165` }));
    app.use(cors({ origin: '*' }));
 }
-// app.use(cors());
 
 
 // routes middleware
@@ -136,22 +100,34 @@ app.use('/api', formRoutes);
 app.use('/api', imageHandler); // to handle image compresssion API
 
 // routes
-// Moved to separate routes directory
+console.log("\n🔍 Listing Registered Routes:\n");
+app._router.stack.forEach((layer) => {
+  if (layer.route) {
+    console.log(`✅ Registered Route: ${Object.keys(layer.route.methods).map(m => m.toUpperCase()).join(', ')} ${layer.route.path}`);
+  } else if (layer.name === 'router') {
+    layer.handle.stack.forEach((subLayer) => {
+      if (subLayer.route) {
+        console.log(`✅ Registered Route: ${Object.keys(subLayer.route.methods).map(m => m.toUpperCase()).join(', ')} ${subLayer.route.path}`);
+      }
+    });
+  } else {
+    console.log("❌ Unable to Register Routes");
+  }
+});
+console.log("\n✅ Finished Listing Routes\n");
 
 
 // port
 const port = process.env.PORT || 8000;
 
-
 // On Production Servers (HTTPS with SSL Certificates)
-
 if (process.env.NODE_ENV === 'production') {
   // SSL Key Certificates (generated using LetsEncrypt)
   var path = '/etc/letsencrypt/live/humblebee.live/fullchain.pem';
 
   if (fs.existsSync(path)) {
-    var key = fs.readFileSync('/etc/letsencrypt/live/humblebee.live/privkey.pem');
-    var cert = fs.readFileSync('/etc/letsencrypt/live/humblebee.live/fullchain.pem');
+    var key = fs.readFileSync('/etc/letsencrypt/live/grepguru.com/privkey.pem');
+    var cert = fs.readFileSync('/etc/letsencrypt/live/grepguru.com/fullchain.pem');
     var options = {
       key: key,
       cert: cert
@@ -185,4 +161,3 @@ if (process.env.NODE_ENV === 'development') {
     console.log(`HTTP (DEV) Server is Running on ${port}`);
   });
 }
-

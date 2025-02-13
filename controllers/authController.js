@@ -4,12 +4,8 @@ const Blog = require('../models/blog');
 const shortId = require('shortid');
 const { errorHandler } = require('../helpers/dbErrorHandler');
 const _ = require('lodash');
-
-
-const jwt = require('jsonwebtoken');  // To Generate the JWT Token
-const expressJwt = require('express-jwt');  // To check if the token generated is Expired or valid
+const jwt = require('jsonwebtoken');  // To Generate and validate the JWT Token
 // Note: Before we generate jwt token , we need to create a secret key (see .env file)
-
 
 const { sendEmailWithNodemailer } = require("../helpers/email"); // for sending GMAIL Email - Email helper function
 
@@ -23,56 +19,54 @@ const { OAuth2Client } = require('google-auth-library');
 
 // Pre Signup Function    ------------------------------------
 
-exports.preSignup = (req, res) => {
-  // console.log("__________ TESTING _______________");
+exports.preSignup = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
 
-  const { name, email, password } = req.body;
+    // Checking if user already exists with this email in the database
+    const user = await User.findOne({ email: email.toLowerCase() });
 
-  // Checking is user already exists with this email or not in the database
-  User.findOne({ email: email.toLowerCase() }, (err, user) => {
-    // if 'user' found with that email, Email is taken
     if (user) {
-      return res.status(400).json({
-        error: 'Email is taken!'
-      });
+      return res.status(400).json({ error: "Email is taken!" });
     }
 
-    // if User does not exist with that email,
-    // then create a new TOKEN (jwt token with that info as payload) to email to User' email for confirmation (valid account)
     // Generate a JWT Json Web Token and Send it to Client 
+    const token = jwt.sign(
+      { name, email, password },
+      process.env.JWT_ACCOUNT_ACTIVATION_SECRET,
+      { expiresIn: "10m" } // expires in 10 minutes
+    );
 
-    const token = jwt.sign({ name, email, password }, process.env.JWT_ACCOUNT_ACTIVATION_SECRET, { expiresIn: '10m' }); // signing the token with user details as payload (data), expires in 10 minutes
-    // ---------------------------
-    // Email the user with the above Token 
-
-    // Creating Email Data that will be send
+    // Creating Email Data to send
     const emailData = {
-
       from: process.env.EMAIL_FROM, // noreply@YourDomain.com
       to: email,
-      subject: 'Account activation link',
+      subject: "Account activation link",
+      text: "Hello world!",
       html: `
-            <h4>Thanks for your interest in creating an account on our super amazing website. We are excited to make you part of our grepGuru community 🤩<h4>
-            <hr/>
-            <p>Please use the following link to actiavte your account:</p>
-            <h5 class="text-muted">(Email valid only for 10 minutes)</h5>
-            <br/>
-            <p>${process.env.CLIENT_URL}/auth/account/activate/${token}</p>
-            <br/>
-            <hr/>
-            <p>This email may contain sensitive information. Please don't share it with anyone.</p>
-            <p>https://grepguru.com 🐝</p>
-          `
+        <h4>Thanks for your interest in creating an account on our super amazing website. We are excited to make you part of our grepGuru community 🤩</h4>
+        <hr/>
+        <p>Please use the following link to activate your account:</p>
+        <h5 class="text-muted">(Email valid only for 10 minutes)</h5>
+        <br/>
+        <p>${process.env.CLIENT_URL}/auth/account/activate/${token}</p>
+        <br/>
+        <hr/>
+        <p>This email may contain sensitive information. Please don't share it with anyone.</p>
+        <p>https://grepguru.com 🐝</p>
+      `
     };
 
-    // Custom message that the user will receive on page after submitting the Account creation pre-signup form if the email is succesfully sent from backend
-    let customMsg = `Email has been sent to ${email}. Follow the instructions to activate your accounnt. Link valid for 10 minutes`;
-
-    // send email with account activation link
+    // Send email with account activation link
+    let customMsg = `Email has been sent to ${email}. Follow the instructions to activate your account. Link is valid for 10 minutes`;
     sendEmailWithNodemailer(req, res, emailData, customMsg);
 
-  });
+  } catch (error) {
+    console.error("PreSignup Error:", error);
+    res.status(500).json({ error: "Internal Server Error. Please try again." });
+  }
 };
+
 // Note: Once the pre-signup is done, then that 'signup' api will be called once the user clicks on the URL sent to his/her email, which will create the user account in database.
 
 
@@ -81,58 +75,46 @@ exports.preSignup = (req, res) => {
 
 // SignUp function   [NEW METHOD (using preSignup for account activation/verification)] -----------------------------------------------------
 
-exports.signup = (req, res) => {
+exports.signup = async (req, res) => {
+  const token = req.body.token; // User's info is in `token` {token: {name, email, password}}
 
-  const token = req.body.token; // user's info is available in 'token'. {token: {name, email, password}}
-
-  // Verify if the Token is valid (not expired)
-
-  if (token) {
-    jwt.verify(token, process.env.JWT_ACCOUNT_ACTIVATION_SECRET, function (err, decoded) {
-      // Callback to get the decoded token data
-
-      if (err) {
-        return res.status(401).json({
-          error: 'Expired link. Signup again'
-        });
-      }
-      // else if token is still valid, create user account in DB
-
-      // grabbing user details from the validated token
-      const { name, email, password } = jwt.decode(token);
-
-      // generate a new random username for user
-      let username = shortId.generate();  // Random username ID generator
-
-      let profile = `${process.env.CLIENT_URL}/profile/${username}`; // Absoulte Path
-
-
-      // Now create a new user
-      const user = new User({ name, email, password, profile, username });
-      // NOte: Although we are sending the password in DB, but actually we are not directly saving password, instead we are encrypting it using hashing method in the mongoose model and saving its hashed value and salt in the Database
-
-      // Save new User details in Database
-      user.save((err, user) => {
-        if (err) {
-          return res.status(400).json({
-            error: errorHandler(err)
-          });
-        }
-
-        return res.json({
-          message: 'Signup success! Please signin :)'
-        });
-      });
-    });
-
-  } else {
-
-    return res.json({
-      message: 'Something went wrong! :( Try again :)'
+  if (!token) {
+    return res.status(400).json({
+      error: "Invalid request. Token missing.",
     });
   }
 
+  try {
+    // Verify token (Now using `await` with `jwt.verify` wrapped inside a Promise)
+    const decoded = await new Promise((resolve, reject) => {
+      jwt.verify(token, process.env.JWT_ACCOUNT_ACTIVATION_SECRET, { algorithms: ["HS256"] }, (err, decoded) => {
+        if (err) reject(err);
+        else resolve(decoded);
+      });
+    });
 
+    // Extract user details from the decoded token
+    const { name, email, password } = decoded;
+
+    // Generate a unique username
+    const username = shortId.generate();
+    const profile = `${process.env.CLIENT_URL}/profile/${username}`;
+
+    // Create new user
+    const user = new User({ name, email, password, profile, username });
+
+    // Save new user in the database
+    await user.save();
+
+    return res.json({
+      message: "Signup success! Please signin :)",
+    });
+
+  } catch (err) {
+    return res.status(400).json({
+      error: "Expired or invalid token. Please signup again.",
+    });
+  }
 };
 
 
@@ -143,43 +125,35 @@ exports.signup = (req, res) => {
 
 // Signup function  [ OLD METHOD (Direct Signup Account, without preSignup)]  -------------------------------------------------
 
-exports.signup = (req, res) => {
-  // Checking is user already exists or not
-  User.findOne({ email: req.body.email }).exec((err, user) => {
-    if (user) {
-      return res.status(400).json({
-        error: 'Email is taken!'
-      });
+exports.signup = async (req, res) => {
+  try {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: req.body.email }).exec();
+
+    if (existingUser) {
+      return res.status(400).json({ error: "Email is taken!" });
     }
 
+    // Extract user details from request body
     const { name, email, password } = req.body;
 
-    let username = shortId.generate();  // Random username ID generator
-    let profile = `${process.env.CLIENT_URL}/profile/${username}`;
+    // Generate unique username and profile URL
+    const username = shortId.generate();
+    const profile = `${process.env.CLIENT_URL}/profile/${username}`;
 
-    // Now create a new user
-    let newUser = new User({ name, email, password, profile, username });
+    // Create new user instance
+    const newUser = new User({ name, email, password, profile, username });
 
-    // Save new User details in Database
-    newUser.save((err, success) => {
-      if (err) {
-        return res.status(400).json({
-          error: err
-        });
-      }
+    // Save new user to database
+    await newUser.save();
 
-      // res.json({
-      //   user: success
-      // });
+    return res.json({ message: "Signup success! Please Signin" });
 
-      res.json({
-        message: 'Signup success! Please Signin'
-      });
-    });
-
-  });
-
+  } catch (err) {
+    return res.status(400).json({ error: err.message || "Something went wrong. Please try again." });
+  }
 };
+
 
 */
 
@@ -189,69 +163,289 @@ exports.signup = (req, res) => {
 
 // Signin Function  ---------------------------------------------
 
-exports.signin = (req, res) => {
-  const { email, password } = req.body;
+exports.signin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  // check if User exists
-  User.findOne({ email: email }).exec((err, user) => {
-    if (err || !user) {
-      return res.status(400).json({
-        error: 'User wth that email does not exist. Please signup.'
-      });
+    // Check if user exists
+    const user = await User.findOne({ email }).exec();
+
+    if (!user) {
+      return res.status(400).json({ error: "User with that email does not exist. Please signup." });
     }
 
-    // Authenticate User (email, password matching)
+    // Authenticate user (check password)
     if (!user.authenticate(password)) {
-      return res.status(400).json({
-        error: "Email and Password do not match."
-      });
+      return res.status(400).json({ error: "Email and Password do not match." });
     }
 
     //////////////////////////////////////////////////////////////////
     //         GENERATE TOKEN
     //////////////////////////////////////////////////////////////////
 
-    // Generate a JWT Json Web Token and Send it to Client 
+    // Generate a JWT Token
+    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' }); // signing the token with user._id as payload (data)
+    // Set token in HTTP-only cookie
+    res.cookie("token", token, { httpOnly: true, expiresIn: "1d" });
 
-    // Token expiry set 1 day = 1d, 1 minute = 1m, 10 seconds = 10
+    // Destructure user details for response
+    const { _id, username, name, role } = user;
 
-    // sending token to Client through token 
-    res.cookie('token', token, { expiresIn: '1d' });
+    return res.json({ token, user: { _id, username, name, email, role } });
 
-    const { _id, username, name, email, role } = user;
-    return res.json({
-      token: token,
-      user: { _id, username, name, email, role }
-    });
-
-  });
-
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Something went wrong. Please try again." });
+  }
 };
 
 
 // Signout   ----------------------------------------------------------------
 
-exports.signout = (req, res) => {
-  res.clearCookie("token");
-  res.json({
-    message: "Signout Success"
-  });
+exports.signout = async (req, res) => {
+  try {
+    res.clearCookie("token", { httpOnly: true });
+
+    return res.json({
+      success: true,
+      message: "Signout successful",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Something went wrong while signing out. Please try again.",
+    });
+  }
 };
 
+
+// Forgot Password ---------------------------------------------------------
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body; // User email requesting password reset
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(401).json({
+        error: "User with that email does not exist. Please check",
+      });
+    }
+
+    // Generate reset token (expires in 10 minutes)
+    const token = jwt.sign(
+      { _id: user._id },
+      process.env.JWT_RESET_PASSWORD,
+      { expiresIn: "10m" }
+    );
+
+    // Creating Email Data
+    const emailData = {
+      from: process.env.EMAIL_FROM, // noreply@YourDomain.com
+      to: email,
+      subject: `Password reset link`,
+      html: `
+            <h4>You have requested a password reset. Please follow the instructions below.</h4>
+            <h3>(Link valid only for 10 minutes)</h3>
+            <hr/>
+            <p>Please use the following link to reset your password:</p>
+            <p><a href="${process.env.CLIENT_URL}/auth/password/reset/${token}">${process.env.CLIENT_URL}/auth/password/reset/${token}</a></p>
+            <hr/>
+            <p>This email may contain sensitive information.</p>
+            <p>https://grepguru.com 🐝</p>
+          `,
+    };
+
+    // Save the token in the user's resetPasswordLink field
+    user.resetPasswordLink = token;
+    await user.save(); // Save changes to the user document
+
+    // Send the reset email
+    await sendEmailWithNodemailer(req, res, emailData);
+
+    return res.json({
+      success: true,
+      message: `Password reset email has been sent to ${email}. Please follow the instructions.`,
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      error: "Something went wrong. Please try again.",
+    });
+  }
+};
+
+
+
+
+//  Reset Password -------------------------------------------------------------------------------------------
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { resetPasswordLink, newPassword } = req.body;
+
+    if (!resetPasswordLink) {
+      return res.status(400).json({ error: "Invalid request. Missing reset link." });
+    }
+
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(resetPasswordLink, process.env.JWT_RESET_PASSWORD, { algorithms: ["HS256"] });
+    } catch (err) {
+      return res.status(401).json({ error: "Expired or invalid reset link. Try again." });
+    }
+
+    // Find user with the reset password link
+    const user = await User.findOne({ resetPasswordLink });
+
+    if (!user) {
+      return res.status(401).json({ error: "Password already updated or invalid link." });
+    }
+
+    // Update user password and remove reset link
+    user.password = newPassword;
+    user.resetPasswordLink = "";
+
+    await user.save();
+
+    return res.json({
+      message: "Great! Now you can login with your new password.",
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      error: "Something went wrong. Please try again later.",
+    });
+  }
+};
+
+
+// -----------------------------------------------------------------------
+
+// GOOGLE Login functionality
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const idToken = req.body.tokenId;
+
+    if (!idToken) {
+      return res.status(400).json({ error: "No ID token received. Bad Request" });
+    }
+
+    // Verify Google ID token
+    const response = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const { email_verified, name, email, jti } = response.payload;
+
+    if (!email_verified) {
+      return res.status(400).json({ error: "Google login failed! Try again." });
+    }
+    
+    // find the user if this email (after User's google email is verified from google servers) is present in the database or not.
+    // If User found, generate a token (as authentication) and give it back to client side as response.
+    // If User does not exist (New User), then Generate a new User (create a new account basically) and save it in database and then generate a token and send it to client side as response.
+
+    // Check if user exists
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // If user exists, generate JWT token
+      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+      res.cookie("token", token, { expiresIn: "1d" });
+
+      const { _id, username, role } = user;
+      return res.json({ token, user: { _id, email, name, role, username } });
+    }
+
+    // If user does NOT exist, create new user
+    const username = shortId.generate();
+    const profile = `${process.env.CLIENT_URL}/profile/${username}`;
+    const password = jti + process.env.JWT_SECRET; // Generate a dummy password
+
+    user = new User({ name, email, profile, username, password });
+
+    // Save new user in DB
+    await user.save();
+
+    // Generate token for new user
+    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    res.cookie("token", token, { expiresIn: "1d" });
+
+    return res.json({ token, user: { _id: user._id, email, name, role: user.role, username } });
+
+  } catch (err) {
+    console.error("Error in Google Login:", err);
+    return res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+};
+
+
+
+// Summary of Google Login 
+/*
+ => npm i google-auth-library
+- Google Login is used to verify Email !
+- If Email is verified by Google then -> Check if User Exists on our Database (already a user) or Not (new user)
+- * If Email Found, Find the User and generate a token and send as response (normal Login process)
+- * If Email Not Found, then first Create a New User Account with those credentials and generate username, profile and password and Create a new user in Database.
+    --- Once new Account created, then as like normal users, Generate a Token and send it as response (login process)
+
+    🔹 Google Login Flow (Super Short & Clear)
+Google's OAuth-based login uses ID tokens to verify users. Here’s the step-by-step flow:
+
+1️⃣ User clicks "Sign in with Google" on your frontend.
+2️⃣ Google OAuth prompts the user to choose their Google account.
+3️⃣ Google generates an idToken and sends it to your frontend (browser).
+4️⃣ Frontend sends idToken to your backend via an API request (/google-login).
+5️⃣ Backend verifies idToken using Google's verifyIdToken() method.
+6️⃣ If idToken is valid, backend:
+
+✅ Checks if the user exists in DB
+✅ Creates new user if not found
+✅ Generates JWT token & sends it back
+7️⃣ Frontend receives JWT token, stores it, and considers the user "logged in."
+*/
+
+
+// =======================================================
+//                  MIDDLEWARES
 // =======================================================
 
 // Middleware (for protected routes - routes only for Logged in users only)
 
 // Check the incoming token's secret & compare it with ours .env secret & if token hasn't expired, this middleware function will return TRUE. (so it basically checks the token expiry) & will make 'userProperty'- 'user' available in Request object
 
-exports.requireSignin = expressJwt({
-  secret: process.env.JWT_SECRET,
-  algorithms: ["HS256"],
-  // userProperty: "auth",
-  userProperty: "user",   // making 'user' property available in the request request of this middleware (as long as toke is valid)
-});
+// OLD CODE (prevous version) TODO: REMOVE Deprecated
+// exports.requireSignin = expressJwt({
+//   secret: process.env.JWT_SECRET,
+//   algorithms: ["HS256"],
+//   // userProperty: "auth",
+//   userProperty: "user",   // making 'user' property available in the request request of this middleware (as long as toke is valid)
+// });
+
+// NEW
+exports.requireSignin = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1]; // Get token from Authorization header
+
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized: No token provided" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] }, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    }
+    req.user = decoded; // Manually setting the user req.user
+    next();
+  });
+};
 
 
 
@@ -328,255 +522,6 @@ exports.canUpdateDeleteBlog = (req, res, next) => {
 };
 
 
-// -----------------------------------------------------------------------------------------------------
-
-// Forgot Password -------------------------
-
-exports.forgotPassword = (req, res) => {
-  const { email } = req.body; // User email requesting password reset
-
-  User.findOne({ email }, (err, user) => {
-    // If Error returned or No user found
-    if (err || !user) {
-      return res.status(401).json({
-        error: 'User with that email does not exist. Please Check'
-      });
-    }
-    // If user found with that email, generate a signed Token with expiry date/time (10 minutes = 10m)
-
-
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_RESET_PASSWORD, { expiresIn: '10m' }); // Note: We have to passed some random Secret key along with the user _id ( user._id as payload) to sign the jwt token. Read more (https://jwt.io/   https://jwt.io/introduction).
-    //Note: { _id: user._id } is a payload "data" send in encrypted form with the jwt token. It servers two purpose - signing the token and sending the sensitive data in encrypted form. We can grab the data from this token by decrypting the jwt token
-
-    // ---------------------------
-    // Email the user with the above Token 
-
-    // Creating Email Data that will be send
-    const emailData = {
-
-      from: process.env.EMAIL_FROM, // noreply@YourDomain.com
-      to: email,
-      subject: `Password reset link`,
-      html: `
-            <h4>You have requested password reset. Please follow the below instructions to update your password.<h4>
-            <h3>(Email valid only for 10 minutes)</h3>
-            <hr/>
-            <br/>
-            <p>Please use the following link to reset your password:</p>
-            <p>${process.env.CLIENT_URL}/auth/password/reset/${token}</p>
-            <br/>
-            <hr/>
-            <p>This email may contain sensitive information</p>
-            <p>https://grepguru.com 🐝</p>
-          `
-    };
-
-    // Update the database
-    // -------------------------
-    // Populate the DB > user > resetPasswordLink  (this will be used to reset Password)
-
-    // Note that we have already found the 'user' from above DB query , we are updating to that user object only (saving token for password reset)
-    return user.updateOne({ resetPasswordLink: token }, (err, success) => {
-      if (err) {
-        return res.json({ error: errorHandler(err) });
-      }
-      // if token successfully saved / updated in DB, send password reset email
-      else {
-        // send Email -----------
-        sendEmailWithNodemailer(req, res, emailData);
-      }
-    });
-
-  });
-};
-
-
-
-
-//  Reset Password -------------------------------------------------------------------------------------------
-
-exports.resetPassword = (req, res) => {
-
-  const { resetPasswordLink, newPassword } = req.body;
-
-
-  if (resetPasswordLink) {
-    jwt.verify(resetPasswordLink, process.env.JWT_RESET_PASSWORD, function (err, decoded)  // function - is callback passed by jwt.verify-> which will give us either Error or Decoded info. 
-    {
-      if (err) {
-        // 401 - Unauthorized (because Token expired)
-        return res.status(401).json({
-          error: 'Expired link. Try again'
-        });
-      }
-      // If token is valid, find the User with that resetPasswordLink and return that 'user' object
-      User.findOne({ resetPasswordLink }, (err, user) => {
-        if (err || !user) {
-          // console.log(" Reset Password Error: ", { err }, user);
-          let errMsg = "Something went wrong. Try later'";
-
-          if (!user) {
-            // user = null (cleared from DB => user already updated password using this link)
-            errMsg = "Password already updated. Link Expired!";
-          }
-
-          // console.log(err);
-
-          return res.status(401).json({
-            error: `${errMsg}`
-          });
-        };
-        // else - update new Password and remove/clear the resetPasswordLink from DB.
-        const updatedFields = {
-          password: newPassword,
-          resetPasswordLink: ''
-        };
-
-        // update any fields that have changed & leave everything as it is - using lodash _.extend() method
-        user = _.extend(user, updatedFields); // merging updated fields in the user object
-
-        // Now set the updated 'user'
-        user.save((err, result) => { // saving new password
-          if (err) {
-            return res.status(400).json({
-              error: errorHandler(err)
-            });
-          }
-          // on successful password update in Database
-          res.json({
-            message: `Great! Now you can login with your new password`
-          });
-
-          // Now redirect the User to signin page after successful password update (on Frontend)
-
-          // You can send confirmation email  on successfull password update from here
-        });
-      });
-    });
-  }
-};
-
-
-
-// ====== ----------------------------------------------------====
-
-// GOOGLE Login functionality
-
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-exports.googleLogin = (req, res) => {
-
-  // send the ID token from the client side to backend
-
-  const idToken = req.body.tokenId;
-
-  console.log("tokenID from client side", idToken);
-
-  if (idToken) {
-
-    // verify using the client
-    client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID }).then(response => {
-
-      // console.log("Response from goole login:", response);
-
-      const { email_verified, name, email, jti } = response.payload; // jti = unique ID to create user password (useless anyway since we are going to use google as authenticator, but still using it just to keep it in sync with our backend structure where we require a password :P )
-
-      if (email_verified) {
-        // find the user if this email (after User's google email is verified from google servers) is present in the database or not.
-        // If User found, generate a token (as authentication) and give it back to client side as response.
-        // If User does not exist (New User), then Generate a new User (create a new account basically) and save it in database and then generate a token and send it to client side as response.
-
-        // Find User
-        User.findOne({ email }).exec((err, user) => {
-
-          // If User exists
-          if (user) {
-            // console.log(user);
-            // If user found, generate a Token for the user to continue login session
-            const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' }); // similar to Login function
-            // Note: Even though Google is authenticating , but we are stil doing our same process like we do in signin() which is on finding user, generate a token, send it to client side
-            // Google Authetication is used Just to make sure user is a Valid Email account holder
-
-            res.cookie('token', token, { expiresIn: '1d' }); // saving the 'token' in cookie to send through response
-
-            const { _id, email, name, role, username } = user;
-
-            // -------------------------- send the response
-            return res.json({
-              token,
-              user: { _id, email, name, role, username }
-            });
-          }
-          // If User does NOT exist (Create User and send same token after generating)
-          else {
-            //  Create New Account for this new User 
-
-            // generate a new random username for user
-            let username = shortId.generate();  // Random username ID generator
-            let profile = `${process.env.CLIENT_URL}/profile/${username}`;
-
-
-            // Note: Although google login does not require password, but behind the scene we are creating it to keep our backend system intact. We are using the unique Code generated by Google - 'jti' as our password here
-
-            // let password = jti;
-            let password = jti + process.env.JWT_SECRET; // for more security
-
-            // Create a new user
-            user = new User({ name, email, profile, username, password }); // name, email from google and we generated rest of the things 
-
-            // save new user in DB (account create)
-            user.save((err, data) => {
-
-              if (err) {
-                return res.status(400).json({
-                  error: errorHandler(err)
-                });
-              }
-              // if there's no error, GENERATE a TOKEN for new User and send it as response (like a regular authenticated user)
-
-              const token = jwt.sign({ _id: data._id }, process.env.JWT_SECRET, { expiresIn: '1d' }); // generate token
-              res.cookie('token', token, { expiresIn: '1d' }); // saving the 'token' in cookie to send through response
-              const { _id, email, name, role, username } = data;
-              // ------------ send the response with token to new user to login
-              return res.json({ token, user: { _id, email, name, role, username } });
-
-            });
-
-          }
-        });
-
-      } // Else - if Email is not verified !
-      else {
-
-        return res.status(400).json({
-          error: 'Google login failed! Try again.'
-        });
-      }
-
-    })
-      .catch(err => {
-        console.log("Error in tokenID or Google Login Validation process --> ", err);
-        // throw new Error(err);
-      });
-
-  }
-  else {
-    console.log("No idToken recieved. Bad Request");
-  }
-
-
-
-};
-
-// Summary of Google Login 
-/*
- => npm i google-auth-library
-- Google Login is used to verify Email !
-- If Email is verified by Google then -> Check if User Exists on our Database (already a user) or Not (new user)
-- * If Email Found, Find the User and generate a token and send as response (normal Login process)
-- * If Email Not Found, then first Create a New User Account with those credentials and generate username, profile and password and Create a new user in Database.
-    --- Once new Account created, then as like normal users, Generate a Token and send it as response (login process)
-*/
 
 // ==============================================================
 

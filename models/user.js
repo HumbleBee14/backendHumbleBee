@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto'); // to hash the password
 
-const userSchema = new mongoose.Schema({
+const { Schema } = mongoose;
+
+const userSchema = new Schema({
   username: {
     type: String,
     trim: true,
@@ -55,7 +57,7 @@ const userSchema = new mongoose.Schema({
   },
 
   resetPasswordLink: {
-    data: String,
+    type: String,
     default: ''
   }
 

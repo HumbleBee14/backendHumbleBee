@@ -13,9 +13,10 @@ tag create list read delete (remove)
 
 // import { Schema, model } from 'mongoose';
 
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const tagSchema = new mongoose.Schema({
+const tagSchema = new Schema({
 
   name: {
     type: String,

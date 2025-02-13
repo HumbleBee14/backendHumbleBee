@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
 // Note: This is schema/model for a single Category (not for list of categories - that is present in blogs modal, which takes categories list having each category type as this model's object (ObjectId) referred to this model)
 
-const categorySchema = new mongoose.Schema({
+const categorySchema = new Schema({
 
   name: {
     type: String,

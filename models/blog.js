@@ -1,13 +1,11 @@
 // BLOG < Model >
-
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const { ObjectId } = mongoose.Schema;
+const { ObjectId } = Schema;
 // https://docs.mongodb.com/manual/reference/method/ObjectId/
 
-
-
-const blogSchema = new mongoose.Schema(
+const blogSchema = new Schema(
   {
 
     title: {
