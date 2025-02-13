@@ -1,11 +1,11 @@
-const Tag = require('../models/tag');
-const Blog = require('../models/blog');
-const slugify = require('slugify');
-const { errorHandler } = require('../helpers/dbErrorHandler');
+import slugify from 'slugify';
+import Blog from '../models/blog.js';
+import { errorHandler } from '../helpers/dbErrorHandler.js';
+import Tag from '../models/tag.js';
 
 
 // create a tag
-exports.create = (req, res) => {
+export function create(req, res) {
   const { name } = req.body;
   let slug = slugify(name)
     .toLowerCase()
@@ -24,10 +24,10 @@ exports.create = (req, res) => {
     }
     res.json(data); // Don't do this - res.json({tag: data})
   });
-};
+}
 
 // to get list of all tags
-exports.list = (req, res) => {
+export function list(req, res) {
 
   Tag.find({}).exec((err, data) => {
     if (err) {
@@ -37,12 +37,12 @@ exports.list = (req, res) => {
     }
     res.json(data);
   });
-};
+}
 // Note: find ({}) -> Empty Parenthiesis/Object == return all the elements/tags
 
 
 // to get single tag
-exports.read = (req, res) => {
+export function read(req, res) {
   // const slug = req.params.tagName
   const slug = req.params.slug.toLowerCase();
 
@@ -72,11 +72,11 @@ exports.read = (req, res) => {
         res.json({ tag: tag, blogs: data }); // sending the json response with the results (list of blogs having same tag & the tag object itself)
       });
   });
-};
+}
 
 
 // to remove/delete a Tag
-exports.remove = (req, res) => {
+export function remove(req, res) {
   // const slug = req.params.tagName
   const slug = req.params.slug.toLowerCase();
 
@@ -90,4 +90,4 @@ exports.remove = (req, res) => {
       message: 'Tag deleted sucessfully'
     });
   });
-};
+}

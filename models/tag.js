@@ -13,7 +13,7 @@ tag create list read delete (remove)
 
 // import { Schema, model } from 'mongoose';
 
-const mongoose = require('mongoose');
+import mongoose, { model } from 'mongoose';
 const { Schema } = mongoose;
 
 const tagSchema = new Schema({
@@ -33,4 +33,4 @@ const tagSchema = new Schema({
 
 }, { timestamp: true });
 
-module.exports = mongoose.model('Tag', tagSchema);
+export default model('Tag', tagSchema);

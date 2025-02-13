@@ -2,31 +2,20 @@
 //   res.json({ time: Date().toString() });
 // }; // Used for testing purpose
 
-// Models
-const Blog = require('../models/blog');
-const Category = require('../models/category');
-const Tag = require('../models/tag');
-const User = require('../models/user');
+import { stripHtml } from 'string-strip-html';
+import { IncomingForm } from 'formidable';  // To handle parsing form data, especially file uploads.
+import { readFileSync } from 'fs';
+import _ from 'lodash';
+import slugify from 'slugify';
 
-const formidable = require('formidable');  // To handle parsing form data, especially file uploads.
-
-const slugify = require('slugify');
-
-const { stripHtml } = require('string-strip-html'); // Strips HTML tags from HTML string. (We'll use it to create excerpts out of blog content)
-
-// import _ from "lodash";
-const _ = require('lodash');
-/* Lodash makes JavaScript easier by taking the hassle out of working with arrays, numbers, objects, strings, etc.
-Lodash's modular methods are great for: Iterating arrays, objects, & strings.Manipulating & testing values.
- (We'll use it to Update Blogs) */
+import Category from '../models/category.js';
+import Tag from '../models/tag.js';
+import User from '../models/user.js';
+import Blog from '../models/blog.js';
 
 // Error Handler
-const { errorHandler } = require('../helpers/dbErrorHandler'); // To send any DB mongoose errors to our client
-const { smartTrim, htmlToTextTrimWithEllipses } = require('../helpers/blogHelper');
-
-const fs = require('fs'); // to get access to file system
-const { resolveSoa } = require('dns');
-
+import { errorHandler } from '../helpers/dbErrorHandler.js'; // To send any DB mongoose errors to our client
+import { smartTrim, htmlToTextTrimWithEllipses } from '../helpers/blogHelper.js';
 
 
 // ----------------------------------------------
@@ -44,10 +33,10 @@ process.on('uncaughtException', err => {
 
 // -----------------------------------------------------------------
 // Create New Blog 
-exports.create = (req, res) => {
+export function create(req, res) {
 
   // Step 1: get the data from FORM
-  let form = new formidable.IncomingForm(); // This was to get all the FORM data
+  let form = new IncomingForm(); // This was to get all the FORM data
   // console.log(form);
   form.keepExtensions = true; // keep original file extensions
   // Parse the Form Data so that we get all data as valid js object
@@ -136,7 +125,7 @@ exports.create = (req, res) => {
       };
       // If image size is les than 1 MB, then we can create a blog now.
       // Check blog's photo model, it has "data" & "contentType" property
-      blog.photo.data = fs.readFileSync(files.photo.path);
+      blog.photo.data = readFileSync(files.photo.path);
       blog.photo.contentType = files.photo.type;
 
     };
@@ -185,7 +174,7 @@ exports.create = (req, res) => {
     });
   });
 
-};
+}
 
 // NOTE: We had used type: 'ObjectId' in Models for category, tags, and users for a reason, to so that we can access those collections from another Models -like here from blog Model, using 'populate()'
 
@@ -201,7 +190,7 @@ exports.create = (req, res) => {
 
 //  list, listAllBlogsCategoriesTags, read, remove, update
 //--------------------------------------------------------------------------------------------------------------------------------
-exports.list = (req, res) => {
+export function list(req, res) {
   // get all the blogs
 
   // populate(<path> , <select>, <model>,...)
@@ -224,7 +213,7 @@ exports.list = (req, res) => {
       res.json(data);
     });
 
-};
+}
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
@@ -232,7 +221,7 @@ exports.list = (req, res) => {
 
 // List / send All the Blogs created by this specific user based on username
 
-exports.listBlogsByUser = (req, res) => {
+export function listBlogsByUser(req, res) {
   User.findOne({ username: req.params.username }) // Finding the User with this username first
     .exec((err, user) => {
       if (err) {
@@ -261,14 +250,14 @@ exports.listBlogsByUser = (req, res) => {
           res.json(data); // returning all the Blogs of this User details based on username 
         });
     });
-};
+}
 
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 // List all Blogs (with Category & Tags) on the /blogs page
 
-exports.listAllBlogsCategoriesTags = (req, res) => {
+export function listAllBlogsCategoriesTags(req, res) {
   // get and Send all the blogs along with all the Categories & tags also (useful for SEO optimization)
 
   // Kind of PAGINATION
@@ -330,12 +319,12 @@ exports.listAllBlogsCategoriesTags = (req, res) => {
       });
     });
 
-};
+}
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 // Get Single blog from backend database - Read blog
-exports.read = (req, res) => {
+export function read(req, res) {
   // get a single blog (very Important from SEO perspective because whenever Search engines look for this Blog page, they will get only that content that you'll return here)
   const slug = req.params.slug.toLowerCase();
 
@@ -365,12 +354,12 @@ exports.read = (req, res) => {
       res.json(data);
 
     });
-};
+}
 
 //-------------------------------------------------------
 
 // Delete a Blog
-exports.remove = (req, res) => {
+export function remove(req, res) {
   // remove a single blog
   const slug = req.params.slug.toLowerCase();
 
@@ -392,13 +381,13 @@ exports.remove = (req, res) => {
     });
   });
 
-};
+}
 
 
 
 //-----------------------------------------------------
 // Update Blog is similar to 'Create' function
-exports.update = (req, res) => {
+export function update(req, res) {
   //  Update blog
   const slug = req.params.slug.toLowerCase();
 
@@ -409,7 +398,7 @@ exports.update = (req, res) => {
       });
     }
 
-    let form = new formidable.IncomingForm(); // form data variable
+    let form = new IncomingForm(); // form data variable
     form.keepExtensions = true; // keep original file extensions
 
     // Parse the Form Data so that we get all data as valid js object
@@ -491,7 +480,7 @@ exports.update = (req, res) => {
         };
         // If image size is les than 1 MB, then we can create a blog now.
         // Check blog's photo model, it has "data" & "contentType" property
-        oldBlog.photo.data = fs.readFileSync(files.photo.path);
+        oldBlog.photo.data = readFileSync(files.photo.path);
         oldBlog.photo.contentType = files.photo.type;
 
       };
@@ -515,12 +504,12 @@ exports.update = (req, res) => {
 
   });
 
-};
+}
 
 // -----------------------------------------------------
 
 // Photos middleware to get the Photos
-exports.photo = (req, res) => {
+export function photo(req, res) {
   const slug = req.params.slug.toLowerCase();
 
   // db.blogs.findOne({slug: "blog-slug-here"}, {photo:1})
@@ -591,7 +580,7 @@ exports.photo = (req, res) => {
     console.log("PHOTO ENDPOINT ERR => ", errr);
     return res.send("No photo found");
   }
-};
+}
 
 // exports.photo = async (req, res) => {
 //   try {
@@ -611,7 +600,7 @@ exports.photo = (req, res) => {
 
 // -----------------------------------------------------
 // get Related Blogs
-exports.listRelatedBlogs = (req, res) => {
+export function listRelatedBlogs(req, res) {
   let limit = req.body.limit ? parseInt(req.body.limit) : 3; // setting default number of related blogs to 3
 
   const { _id, categories } = req.body.blog; // grabbing list of categories of the current blog from the request to find other blogs with similar category. blog '_id' is extracted to make sure we Exclude this blog from related blogs :P 
@@ -631,13 +620,13 @@ exports.listRelatedBlogs = (req, res) => {
       }
       res.json(blogs);
     });
-};;
+};
 
 
 // ----------------------------------------------------
 
 // Blog Search API middleware controller (Search Blogs)
-exports.listSearch = (req, res) => {
+export function listSearch(req, res) {
 
   try {
 
@@ -670,7 +659,7 @@ exports.listSearch = (req, res) => {
     res.status(500).send("Sever Error");
   }
 
-};
+}
 
 // -------------------------------------------------------------------------------------------------------------------
 

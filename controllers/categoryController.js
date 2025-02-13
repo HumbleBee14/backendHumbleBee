@@ -1,11 +1,10 @@
-const Category = require('../models/category');
-const slugify = require('slugify');
-const Blog = require('../models/blog');
-
-const { errorHandler } = require('../helpers/dbErrorHandler');
+import slugify from 'slugify';
+import Blog from '../models/blog.js';
+import { errorHandler } from '../helpers/dbErrorHandler.js';
+import Category from '../models/category.js';
 
 // create a category
-exports.create = (req, res) => {
+export function create(req, res) {
   const { name } = req.body;
   let slug = slugify(name)
     .toLowerCase()
@@ -25,11 +24,11 @@ exports.create = (req, res) => {
     }
     res.json(data);
   });
-};
+}
 
 
 // to get list of all the categories
-exports.list = (req, res) => {
+export function list(req, res) {
 
   Category.find({}).exec((err, data) => {
     if (err) {
@@ -39,12 +38,12 @@ exports.list = (req, res) => {
     }
     res.json(data);
   });
-};
+}
 // Note: find ({}) -> Empty Parenthiesis/Object == return all the elements/categories
 
 
 // to get single category   (& return all the blogs with that category)
-exports.read = (req, res) => {
+export function read(req, res) {
   const slug = req.params.slug.toLowerCase();
 
   // Finding the 'category' through the category-slug & below using that category object response to find all the blogs having that category
@@ -75,11 +74,11 @@ exports.read = (req, res) => {
       });
 
   });
-};
+}
 
 
 // to remove/delete a category
-exports.remove = (req, res) => {
+export function remove(req, res) {
   const slug = req.params.slug.toLowerCase();
 
   Category.findOneAndRemove({ slug }).exec((err, data) => {
@@ -92,7 +91,7 @@ exports.remove = (req, res) => {
       message: 'Category deleted sucessfully'
     });
   });
-};
+}
 
 
 

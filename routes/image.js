@@ -1,12 +1,11 @@
-const express = require('express');
-const router = express.Router();
+import { Router } from 'express';
+const router = Router();
 
 // controllers
-const { imageBCompress, imagePCompress } = require('../controllers/imageController');
+import { imageBCompress, imagePCompress } from '../controllers/imageController.js';
 
-
-// validators
-// const { imageValidation } = require('../validators/imageValidator');
+// Validators
+// import { imageValidation } from '../validators/imageValidator.js';
 
 //  Image route, it'll first validate (File Type) & then will perform the required image Optimization / Compression and later update that image in the source (DB in our case)
 
@@ -18,4 +17,4 @@ router.get('/img/blog/photo/:slug', imageBCompress);
 
 //------------------------------------
 
-module.exports = router;
+export default router;

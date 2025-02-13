@@ -1,9 +1,7 @@
 // Contact Form Validator
+import { check } from 'express-validator';
 
-const { check } = require('express-validator');
-
-// Category Validator
-exports.contactFormValidator = [
+export const contactFormValidator = [
   check('name')
     .not()
     .isEmpty()

@@ -1,21 +1,20 @@
-const express = require('express');
-const morgan = require('morgan');
-const cookieParser = require('cookie-parser');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const https = require('https');
-const fs = require('fs');
+import express from "express";
+import morgan from "morgan";
+import cookieParser from "cookie-parser";
+import mongoose from "mongoose";
+import cors from "cors";
+import https from "https";
+import fs from "fs";
 
-require('dotenv').config();
-// ---------------------------------------------
+import "dotenv/config";
 
-const blogRoutes = require('./routes/blog');
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/user');
-const categoryRoutes = require('./routes/category');
-const tagRoutes = require('./routes/tag');
-const formRoutes = require('./routes/form');
-const imageHandler = require('./routes/image'); // Under Development
+import blogRoutes from "./routes/blog.js";
+import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/user.js";
+import categoryRoutes from "./routes/category.js";
+import tagRoutes from "./routes/tag.js";
+import formRoutes from "./routes/form.js";
+import imageHandler from "./routes/image.js"; // Under Development
 
 //-------------------------------------------------------------------------
 const app = express();

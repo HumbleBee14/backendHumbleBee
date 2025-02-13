@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose, { model } from 'mongoose';
 const { Schema } = mongoose;
 
 // Note: This is schema/model for a single Category (not for list of categories - that is present in blogs modal, which takes categories list having each category type as this model's object (ObjectId) referred to this model)
@@ -21,4 +21,4 @@ const categorySchema = new Schema({
 }, { timestamp: true });
 
 
-module.exports = mongoose.model('Category', categorySchema);
+export default model('Category', categorySchema);

@@ -1,12 +1,11 @@
-const User = require('../models/user');
-const Blog = require('../models/blog');
+import _ from 'lodash';
+import { IncomingForm } from 'formidable';
+import { readFileSync } from 'fs';
+import slugify from 'slugify';
 
-const _ = require('lodash');
-const formidable = require('formidable');
-const fs = require('fs');
-const slugify = require('slugify');
-
-const { errorHandler } = require('../helpers/dbErrorHandler');
+import Blog from '../models/blog.js';
+import User from '../models/user.js';
+import { errorHandler } from '../helpers/dbErrorHandler.js';
 
 
 
@@ -15,16 +14,16 @@ const { errorHandler } = require('../helpers/dbErrorHandler');
 // ---------------------------------------------------------
 
 // Contoller method to get User Public info - User Profile (to get selected user info only from req.profile (We have removed hashed passwords from the request))
-exports.read = (req, res) => {
+export function read(req, res) {
   req.profile.hashed_password = undefined; // removing password from request (by making it undefined) for sending that in the response
   return res.json(req.profile);
-};
+}
 
 
 // ----------------------------------------------------------------
 
 // for Public Profile (Response: User Public Profile + User's Blogs)
-exports.publicProfile = (req, res) => {
+export function publicProfile(req, res) {
   let username = req.params.username; // 'username' will be passed through URL query parameters
 
   // console.log("username in request --->", username);
@@ -85,16 +84,16 @@ exports.publicProfile = (req, res) => {
         });
 
     });
-};
+}
 
 
 
 // --------------------------------------------------------
 //  User Profile Update middleware (to handle Profile details Update requests from users)
 
-exports.update = (req, res) => {
+export function update(req, res) {
 
-  let form = new formidable.IncomingForm(); // instanciating a new form object
+  let form = new IncomingForm(); // instanciating a new form object
   form.keepExtension = true;
 
   form.parse(req, (err, fields, files) => { // we are getting formdata from 'req' / request only (through body)
@@ -153,7 +152,7 @@ exports.update = (req, res) => {
         });
       }
 
-      user.photo.data = fs.readFileSync(files.photo.path);
+      user.photo.data = readFileSync(files.photo.path);
       user.photo.contentType = files.photo.type;
 
     }
@@ -176,14 +175,14 @@ exports.update = (req, res) => {
 
   });
 
-};
+}
 
 
 
 // ---------------------------------------------------------
 
 // For USER Photo
-exports.photo = (req, res) => {
+export function photo(req, res) {
   // First grab the username (and then search for that user's photo)
   const username = req.params.username;
 
@@ -202,4 +201,4 @@ exports.photo = (req, res) => {
     }
   });
 
-};
+}

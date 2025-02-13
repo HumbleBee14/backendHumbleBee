@@ -1,5 +1,5 @@
 // BLOG < Model >
-const mongoose = require('mongoose');
+import mongoose, { model } from 'mongoose';
 const { Schema } = mongoose;
 
 const { ObjectId } = Schema;
@@ -76,7 +76,7 @@ const blogSchema = new Schema(
 
 
 
-module.exports = mongoose.model('Blog', blogSchema);
+export default model('Blog', blogSchema);
 
 // mongoose.model('Blog', blogSchema) --> here 'Blog' is the Model name we are setting for the model we created - 'blogSchema'
 

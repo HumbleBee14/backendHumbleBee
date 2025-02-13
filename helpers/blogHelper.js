@@ -1,9 +1,7 @@
 // My custom trim method
+import { htmlToText } from 'html-to-text';
 
-const { htmlToText } = require('html-to-text'); // https://www.npmjs.com/package/html-to-text
-
-
-exports.htmlToTextTrimWithEllipses = (str, trimLength) => {
+export function htmlToTextTrimWithEllipses(str, trimLength) {
   // function htmlToTextTrimWithEllipses(str, trimLength) {
 
   let trimmedStr = htmlToText(str, {
@@ -22,7 +20,7 @@ exports.htmlToTextTrimWithEllipses = (str, trimLength) => {
   // console.log("trimmedStr ==>", trimmedStr);
 
   return trimmedStr;
-};
+}
 
 // htmlToTextTrimWithEllipses(str, 320);
 
@@ -30,7 +28,7 @@ exports.htmlToTextTrimWithEllipses = (str, trimLength) => {
 // html trim method provided by Author
 // ----------------------------------------------------------------
 
-exports.smartTrim = (str, length, delim, appendix) => {
+export function smartTrim(str, length, delim, appendix) {
   if (str.length <= length) return str;
 
   var trimmedStr = str.substr(0, length + delim.length);
@@ -42,4 +40,4 @@ exports.smartTrim = (str, length, delim, appendix) => {
   if (trimmedStr) trimmedStr += appendix;
 
   return trimmedStr;
-};
+}

@@ -1,7 +1,6 @@
-const { check } = require('express-validator')
+import { check } from 'express-validator';
 
-// Category Validator
-exports.categoryCreateValidator = [
+export const categoryCreateValidator = [
   check('name')
     .not()
     .isEmpty()

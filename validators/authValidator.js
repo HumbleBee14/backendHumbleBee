@@ -1,7 +1,6 @@
-const { check } = require('express-validator');
+import { check } from 'express-validator';
 
-// SignUp Validator
-exports.userSignupValidator = [
+export const userSignupValidator = [
   check('name')
     .not()
     .isEmpty()
@@ -19,9 +18,7 @@ exports.userSignupValidator = [
 ];
 
 
-// SignIn Validator
-
-exports.userSigninValidator = [
+export const userSigninValidator = [
 
   check('email')
     .isEmail()
@@ -34,9 +31,7 @@ exports.userSigninValidator = [
 
 
 
-// Forgot Password Form (email) Validator
-
-exports.forgotPasswordValidator = [
+export const forgotPasswordValidator = [
 
   check('email')
     .not()
@@ -46,9 +41,7 @@ exports.forgotPasswordValidator = [
 ];
 
 
-// Reset Password Validator // (use regex for more complex validations)
-
-exports.resetPasswordValidator = [
+export const resetPasswordValidator = [
 
   check('newPassword')
     .not()

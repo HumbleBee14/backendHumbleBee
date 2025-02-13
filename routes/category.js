@@ -1,17 +1,14 @@
-const express = require('express');
-const router = express.Router();
-const { create, list, read, remove } = require('../controllers/categoryController');
-
+import { Router } from 'express';
+const router = Router();
+import { create, list, read, remove } from '../controllers/categoryController.js';
 
 // validators
-const { runValidation } = require('../validators/index');
-const { categoryCreateValidator } = require('../validators/categoryValidator');
-
-const { requireSignin, adminMiddleware } = require('../controllers/authController');
+import { runValidation } from '../validators/index.js';
+import { categoryCreateValidator } from '../validators/categoryValidator.js';
+import { requireSignin, adminMiddleware } from '../controllers/authController.js';
 
 // Create Category route, it'll first validate & check for authetication & role (admin) and then will Create the category in db
 router.post('/category', categoryCreateValidator, runValidation, requireSignin, adminMiddleware, create);
-
 
 //------------------------------------
 // to get all the categories
@@ -24,6 +21,4 @@ router.get('/category/:slug', read);       // Note: we aren't using ID, but slug
 router.delete('/category/:slug', requireSignin, adminMiddleware, remove);
 
 
-
-
-module.exports = router;
+export default router;

@@ -1,43 +1,29 @@
 // Send EMAIL from Contact Form
-
-// npm i nodemailer (for nodemailer - use this for gmail)
-
-
-const { sendEmailWithNodemailer } = require("../helpers/email"); // for sending GMAIL Email - Email helper function
+import { sendEmailWithNodemailer } from "../helpers/email.js"; 
 
 
-// For CONTACT FORM  (sending email to website Admin / owner)
-exports.contactForm = (req, res) => {
-
+// For CONTACT FORM (sending email to website Admin / owner)
+export const contactForm = (req, res) => {
   const { email, name, sub, message } = req.body;
 
-  // console.log("_ Email _ : ", req.body);
-
-
   const emailData = {
-    to: process.env.EMAIL_TO, // Receiver (Admin/website owner in this case)
-    // to: "xxxxxxxxx@gmail.com", // to other user (on behalf of Website's Official Email which is set in .env file)
-    from: req.body.email, // from customer / form
-    // cc: 'natthakw@scg.co.th', // Comma separated list or an array
-    subject: `Website Contact Form -${process.env.APP_NAME}`, // email Subject Line
-    // subject: `${sub}`, // Email Subject By User
-
-    // We can send two types of email- both html & text
-    text: `Email received from Contact Form \n Sender name: ${name} \n Sender email: ${email} \n Sender subject: ${sub} \n Sender message: ${message}`,
+    to: process.env.EMAIL_TO, // Receiver (Admin/website owner)
+    from: email, // Sender (customer/form)
+    subject: `New Contact Form Submission - ${process.env.APP_NAME}`,
+    text: `You have received a new message from the contact form on your website.\n\nName: ${name}\nEmail: ${email}\nSubject: ${sub}\nMessage: ${message}`,
     html: `
-          <h4> Email received from contact from:<h4>
-          <p>Sender name: ${name}</p>
-          <p>Sender email: ${email}</p>
-          <p>Sender subject: ${sub}</p>
-          <p>Sender message: ${message}</p>
-          <hr/>
-          <p>This email may contain sensitive information</p>
-          <p>https://grepguru.com 🐝</p>
-        `,
+      <h4>New Contact Form Submission:</h4>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Subject:</strong> ${sub}</p>
+      <p><strong>Message:</strong> ${message}</p>
+      <hr/>
+      <p>This email may contain sensitive information.</p>
+      <p><a href="https://grepguru.com">https://grepguru.com</a> 🐝</p>
+    `,
   };
 
-
-  sendEmailWithNodemailer(req, res, emailData);// for sending email (using GMAIL as SMTP) 
+  sendEmailWithNodemailer(req, res, emailData);
 };
 
 
@@ -45,36 +31,29 @@ exports.contactForm = (req, res) => {
 // -------------------------------------------------------
 
 // To Contact Blog Author
-exports.contactBlogAuthorForm = (req, res) => {
-
+export const contactBlogAuthorForm = (req, res) => {
   const { authorEmail, email, name, sub, message } = req.body;
-  // console.log("Email : ", req.body);
 
-  //               BLOG AUTHOR         WEBSITE ADMIN
-  let mailList = [authorEmail, process.env.EMAIL_TO]; // both User (Blog AUthor) and the Admin will receive the mail
+  const mailList = [authorEmail, process.env.EMAIL_TO]; // Blog Author and Admin will receive the email
 
   const emailData = {
-    // to: authorEmail, // Receiver (Blog Author in this case)
-    to: mailList, // Receiver (Blog Author & Admin)
-    from: email, // from customer
-    // cc: 'natthakw@scg.com', // Comma separated list or an array
-    subject: `Someone messaged you from - ${process.env.APP_NAME}`, // email Subject Line
-    // subject: `${sub}`, // Email Subject By User
-    // We can send two types of email- both html & text
-    text: `Message received from \n  Name: ${name} \n  Email: ${email} \n Sender message: ${message}`,
+    to: mailList,
+    from: email,
+    subject: `New Message from ${process.env.APP_NAME}`,
+    text: `You have received a new message from the blog contact form.\n\nName: ${name}\nEmail: ${email}\nSubject: ${sub}\nMessage: ${message}`,
     html: `
-          <h4>Message received from :<h4>
-          <p>Name   : ${name}</p>
-          <p>Email  : ${email}</p>
-          <p>Subject: ${sub}</p>
-          <p>Message: ${message}</p>
-          <hr/>
-          <p>This email may contain sensitive information</p>
-          <p>https://grepguru.com🐝</p>
-        `,
+      <h4>New Message from Blog Contact Form:</h4>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Subject:</strong> ${sub}</p>
+      <p><strong>Message:</strong> ${message}</p>
+      <hr/>
+      <p>This email may contain sensitive information.</p>
+      <p><a href="https://grepguru.com">https://grepguru.com</a> 🐝</p>
+    `,
   };
 
-  sendEmailWithNodemailer(req, res, emailData); // send email 
+  sendEmailWithNodemailer(req, res, emailData);
 };
 
  // ----------------------------------------------------------------------------

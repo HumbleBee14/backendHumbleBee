@@ -1,24 +1,12 @@
-const express = require('express');
-const router = express.Router();
-const { requireSignin, adminMiddleware, authMiddleware, canUpdateDeleteBlog } = require('../controllers/authController');
+import { Router } from 'express';
+const router = Router();
+import { requireSignin, adminMiddleware, authMiddleware, canUpdateDeleteBlog } from "../controllers/authController.js";
 
-const {
-  create,
-  list,
-  listAllBlogsCategoriesTags,
-  read,
-  remove,
-  update,
-  photo,
-  listRelatedBlogs,
-  listSearch,
-  listBlogsByUser
-} = require('../controllers/blogController');
+import { create, list, listAllBlogsCategoriesTags, read, remove, update, photo, listRelatedBlogs, listSearch, listBlogsByUser } from '../controllers/blogController.js';
 
 
 
 //  ======================================================================================
-
 
 // Crete a new Blog route (for ADMIN)
 router.post('/blog', requireSignin, adminMiddleware, create);
@@ -63,9 +51,7 @@ router.put('/user/blog/:slug', requireSignin, authMiddleware, canUpdateDeleteBlo
 
 // ------------------------------------------------------
 
-
-
-module.exports = router;
+export default router;
 
 
 // ################## NOTE #################

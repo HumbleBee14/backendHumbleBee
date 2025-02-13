@@ -1,11 +1,11 @@
-const express = require('express');
-const router = express.Router();
+import { Router } from 'express';
+const router = Router();
 
-const { preSignup, signup, signin, signout, requireSignin, forgotPassword, resetPassword, googleLogin } = require('../controllers/authController');
+import { preSignup, signup, signin, signout, requireSignin, forgotPassword, resetPassword, googleLogin } from '../controllers/authController.js';
 
 // validators
-const { runValidation } = require('../validators/index');
-const { userSignupValidator, userSigninValidator, forgotPasswordValidator, resetPasswordValidator } = require('../validators/authValidator');
+import { runValidation } from '../validators/index.js';
+import { userSignupValidator, userSigninValidator, forgotPasswordValidator, resetPasswordValidator } from '../validators/authValidator.js';
 
 // Routes With validators
 
@@ -40,4 +40,4 @@ router.get('/secret', requireSignin, (req, res) => {
 });
 */
 
-module.exports = router;
+export default router;

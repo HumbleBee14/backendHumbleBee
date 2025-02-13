@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const crypto = require('crypto'); // to hash the password
+import mongoose, { model } from 'mongoose';
+import { createHmac } from 'crypto'; // to hash the password
 
 const { Schema } = mongoose;
 
@@ -93,8 +93,7 @@ userSchema.methods = {
   encryptPassword: function (password) {
     if (!password) return '';
     try {
-      return crypto
-        .createHmac('sha1', this.salt)
+      return createHmac('sha1', this.salt)
         .update(password)
         .digest('hex');
 
@@ -109,7 +108,7 @@ userSchema.methods = {
   }
 };
 
-module.exports = mongoose.model('User', userSchema);
+export default model('User', userSchema);
 
 
 

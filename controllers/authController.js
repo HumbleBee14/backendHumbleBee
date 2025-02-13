@@ -1,16 +1,17 @@
-const User = require('../models/user');
-const Blog = require('../models/blog');
+import User from '../models/user.js';
+import Blog from '../models/blog.js';
 
-const shortId = require('shortid');
-const { errorHandler } = require('../helpers/dbErrorHandler');
-const _ = require('lodash');
-const jwt = require('jsonwebtoken');  // To Generate and validate the JWT Token
+import { generate } from 'shortid';
+import { errorHandler } from '../helpers/dbErrorHandler.js';
+import _ from 'lodash';
+import jwt from 'jsonwebtoken';  // To Generate and validate the JWT Token
+const { sign, verify } = jwt;
 // Note: Before we generate jwt token , we need to create a secret key (see .env file)
 
-const { sendEmailWithNodemailer } = require("../helpers/email"); // for sending GMAIL Email - Email helper function
+import { sendEmailWithNodemailer } from "../helpers/email.js"; // for sending GMAIL Email - Email helper function
 
 // google login auth library
-const { OAuth2Client } = require('google-auth-library');
+import { OAuth2Client } from 'google-auth-library';
 
 
 
@@ -19,7 +20,7 @@ const { OAuth2Client } = require('google-auth-library');
 
 // Pre Signup Function    ------------------------------------
 
-exports.preSignup = async (req, res) => {
+export async function preSignup(req, res) {
   try {
     const { name, email, password } = req.body;
 
@@ -31,7 +32,7 @@ exports.preSignup = async (req, res) => {
     }
 
     // Generate a JWT Json Web Token and Send it to Client 
-    const token = jwt.sign(
+    const token = sign(
       { name, email, password },
       process.env.JWT_ACCOUNT_ACTIVATION_SECRET,
       { expiresIn: "10m" } // expires in 10 minutes
@@ -65,7 +66,7 @@ exports.preSignup = async (req, res) => {
     console.error("PreSignup Error:", error);
     res.status(500).json({ error: "Internal Server Error. Please try again." });
   }
-};
+}
 
 // Note: Once the pre-signup is done, then that 'signup' api will be called once the user clicks on the URL sent to his/her email, which will create the user account in database.
 
@@ -75,7 +76,7 @@ exports.preSignup = async (req, res) => {
 
 // SignUp function   [NEW METHOD (using preSignup for account activation/verification)] -----------------------------------------------------
 
-exports.signup = async (req, res) => {
+export async function signup(req, res) {
   const token = req.body.token; // User's info is in `token` {token: {name, email, password}}
 
   if (!token) {
@@ -87,7 +88,7 @@ exports.signup = async (req, res) => {
   try {
     // Verify token (Now using `await` with `jwt.verify` wrapped inside a Promise)
     const decoded = await new Promise((resolve, reject) => {
-      jwt.verify(token, process.env.JWT_ACCOUNT_ACTIVATION_SECRET, { algorithms: ["HS256"] }, (err, decoded) => {
+      verify(token, process.env.JWT_ACCOUNT_ACTIVATION_SECRET, { algorithms: ["HS256"] }, (err, decoded) => {
         if (err) reject(err);
         else resolve(decoded);
       });
@@ -97,7 +98,7 @@ exports.signup = async (req, res) => {
     const { name, email, password } = decoded;
 
     // Generate a unique username
-    const username = shortId.generate();
+    const username = generate();
     const profile = `${process.env.CLIENT_URL}/profile/${username}`;
 
     // Create new user
@@ -115,7 +116,7 @@ exports.signup = async (req, res) => {
       error: "Expired or invalid token. Please signup again.",
     });
   }
-};
+}
 
 
 
@@ -163,7 +164,7 @@ exports.signup = async (req, res) => {
 
 // Signin Function  ---------------------------------------------
 
-exports.signin = async (req, res) => {
+export async function signin(req, res) {
   try {
     const { email, password } = req.body;
 
@@ -184,7 +185,7 @@ exports.signin = async (req, res) => {
     //////////////////////////////////////////////////////////////////
 
     // Generate a JWT Token
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     // Set token in HTTP-only cookie
     res.cookie("token", token, { httpOnly: true, expiresIn: "1d" });
@@ -197,12 +198,12 @@ exports.signin = async (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: err.message || "Something went wrong. Please try again." });
   }
-};
+}
 
 
 // Signout   ----------------------------------------------------------------
 
-exports.signout = async (req, res) => {
+export async function signout(req, res) {
   try {
     res.clearCookie("token", { httpOnly: true });
 
@@ -215,17 +216,17 @@ exports.signout = async (req, res) => {
       error: "Something went wrong while signing out. Please try again.",
     });
   }
-};
+}
 
 
 // Forgot Password ---------------------------------------------------------
 
-exports.forgotPassword = async (req, res) => {
+export async function forgotPassword(req, res) {
   try {
     const { email } = req.body; // User email requesting password reset
 
     // Check if user exists
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).exec();
 
     if (!user) {
       return res.status(401).json({
@@ -234,7 +235,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     // Generate reset token (expires in 10 minutes)
-    const token = jwt.sign(
+    const token = sign(
       { _id: user._id },
       process.env.JWT_RESET_PASSWORD,
       { expiresIn: "10m" }
@@ -274,14 +275,14 @@ exports.forgotPassword = async (req, res) => {
       error: "Something went wrong. Please try again.",
     });
   }
-};
+}
 
 
 
 
 //  Reset Password -------------------------------------------------------------------------------------------
 
-exports.resetPassword = async (req, res) => {
+export async function resetPassword(req, res) {
   try {
     const { resetPasswordLink, newPassword } = req.body;
 
@@ -292,13 +293,13 @@ exports.resetPassword = async (req, res) => {
     // Verify token
     let decoded;
     try {
-      decoded = jwt.verify(resetPasswordLink, process.env.JWT_RESET_PASSWORD, { algorithms: ["HS256"] });
+      decoded = verify(resetPasswordLink, process.env.JWT_RESET_PASSWORD, { algorithms: ["HS256"] });
     } catch (err) {
       return res.status(401).json({ error: "Expired or invalid reset link. Try again." });
     }
 
     // Find user with the reset password link
-    const user = await User.findOne({ resetPasswordLink });
+    const user = await User.findOne({ resetPasswordLink }).exec();
 
     if (!user) {
       return res.status(401).json({ error: "Password already updated or invalid link." });
@@ -319,7 +320,7 @@ exports.resetPassword = async (req, res) => {
       error: "Something went wrong. Please try again later.",
     });
   }
-};
+}
 
 
 // -----------------------------------------------------------------------
@@ -328,7 +329,7 @@ exports.resetPassword = async (req, res) => {
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-exports.googleLogin = async (req, res) => {
+export async function googleLogin(req, res) {
   try {
     const idToken = req.body.tokenId;
 
@@ -353,11 +354,11 @@ exports.googleLogin = async (req, res) => {
     // If User does not exist (New User), then Generate a new User (create a new account basically) and save it in database and then generate a token and send it to client side as response.
 
     // Check if user exists
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email }).exec();
 
     if (user) {
       // If user exists, generate JWT token
-      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+      const token = sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
       res.cookie("token", token, { expiresIn: "1d" });
 
       const { _id, username, role } = user;
@@ -365,7 +366,7 @@ exports.googleLogin = async (req, res) => {
     }
 
     // If user does NOT exist, create new user
-    const username = shortId.generate();
+    const username = generate(); // ShortID generator
     const profile = `${process.env.CLIENT_URL}/profile/${username}`;
     const password = jti + process.env.JWT_SECRET; // Generate a dummy password
 
@@ -375,7 +376,7 @@ exports.googleLogin = async (req, res) => {
     await user.save();
 
     // Generate token for new user
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
     res.cookie("token", token, { expiresIn: "1d" });
 
     return res.json({ token, user: { _id: user._id, email, name, role: user.role, username } });
@@ -384,7 +385,7 @@ exports.googleLogin = async (req, res) => {
     console.error("Error in Google Login:", err);
     return res.status(500).json({ error: "Something went wrong. Please try again." });
   }
-};
+}
 
 
 
@@ -431,28 +432,28 @@ Google's OAuth-based login uses ID tokens to verify users. Here’s the step-by-
 // });
 
 // NEW
-exports.requireSignin = (req, res, next) => {
+export function requireSignin(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1]; // Get token from Authorization header
 
   if (!token) {
     return res.status(401).json({ error: "Unauthorized: No token provided" });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] }, (err, decoded) => {
+  verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] }, (err, decoded) => {
     if (err) {
       return res.status(401).json({ error: "Unauthorized: Invalid token" });
     }
     req.user = decoded; // Manually setting the user req.user
     next();
   });
-};
+}
 
 
 
 // Auth middleware  ---------------------------------------------------------------------
-exports.authMiddleware = (req, res, next) => {
+export function authMiddleware(req, res, next) {
   const authUserId = req.user._id;
-  User.findById({ _id: authUserId }).exec((err, user) => {
+  findById({ _id: authUserId }).exec((err, user) => {
     if (err || !user) {
       return res.status(400).json({
         error: 'User not found'
@@ -461,12 +462,12 @@ exports.authMiddleware = (req, res, next) => {
     req.profile = user; // passing User's data in the request to next function
     next();
   });
-};
+}
 
 // Admin Middleware   -------------------------------------------------------------------
-exports.adminMiddleware = (req, res, next) => {
+export function adminMiddleware(req, res, next) {
   const adminUserId = req.user._id;
-  User.findById({ _id: adminUserId }).exec((err, user) => {
+  findById({ _id: adminUserId }).exec((err, user) => {
     if (err || !user) {
       return res.status(400).json({
         error: 'User not found'
@@ -482,7 +483,7 @@ exports.adminMiddleware = (req, res, next) => {
     req.profile = user;
     next();
   });
-};
+}
 
 
 // ----------------------------------------------------------------------------------------------
@@ -491,7 +492,7 @@ exports.adminMiddleware = (req, res, next) => {
 
 // Middleware to determine if the Specifc Blog can be Updated or Deleted by this User (or if this User has permision to delete / update a blog)
 
-exports.canUpdateDeleteBlog = (req, res, next) => {
+export function canUpdateDeleteBlog(req, res, next) {
 
   // to find the particular blog based on the slug
   const slug = req.params.slug.toLowerCase();
@@ -519,7 +520,7 @@ exports.canUpdateDeleteBlog = (req, res, next) => {
     next(); // if user is authorized, next callback (next step) will be allowed to proceed, else it'll fail here only if user is not authorized to delete or update this blog
   });
 
-};
+}
 
 
 

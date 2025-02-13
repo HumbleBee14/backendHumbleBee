@@ -6,11 +6,11 @@
 // Now we can import it in any module and use to send emails. Lets try using it to send contact form
 // I have added additonal parameter - 'customMsg' - for functions which want to return custom message through the email response
 
-const nodeMailer = require("nodemailer");
+import { createTransport } from "nodemailer";
 
-exports.sendEmailWithNodemailer = (req, res, emailData, customMsg) => {
+export function sendEmailWithNodemailer(req, res, emailData, customMsg) {
 
-  const transporter = nodeMailer.createTransport({
+  const transporter = createTransport({
     service: "gmail",
     // host: "smtp.office365.com",
     // port: 587, // Always use 587 for TLS
@@ -43,7 +43,7 @@ exports.sendEmailWithNodemailer = (req, res, emailData, customMsg) => {
         success: false
       });
     });
-};
+}
 
 
 // ----------------------------------------------------------

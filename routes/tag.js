@@ -1,13 +1,13 @@
-const express = require('express');
-const router = express.Router();
+import { Router } from 'express';
+const router = Router();
 
 // controllers
-const { create, list, read, remove } = require('../controllers/tagController');
-const { requireSignin, adminMiddleware } = require('../controllers/authController');
+import { create, list, read, remove } from '../controllers/tagController.js';
+import { requireSignin, adminMiddleware } from '../controllers/authController.js';
 
 // validators
-const { runValidation } = require('../validators/index');
-const { tagCreateValidator } = require('../validators/tagValidator');
+import { runValidation } from '../validators/index.js';
+import { tagCreateValidator } from '../validators/tagValidator.js';
 
 
 // Create Tag route, it'll first validate & check for authetication & role (admin) and then will Create the TAGS in db
@@ -27,4 +27,4 @@ router.get('/tag/:slug', read);       // Note: we aren't using ID, but slug - SE
 router.delete('/tag/:slug', requireSignin, adminMiddleware, remove);
 
 
-module.exports = router;
+export default router;
