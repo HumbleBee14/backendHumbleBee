@@ -101,7 +101,7 @@ export async function signup(req, res) {
     const { name, email, password } = decoded;
 
     // Generate a unique username
-    const username = generate();
+    const username = shortId.generate();
     const profile = `${process.env.CLIENT_URL}/profile/${username}`;
 
     // Create new user
@@ -116,7 +116,7 @@ export async function signup(req, res) {
 
   } catch (err) {
     return res.status(400).json({
-      error: "Expired or invalid token. Please signup again.",
+      error: "Expired or invalid token. Please signup again." + err,
     });
   }
 }
