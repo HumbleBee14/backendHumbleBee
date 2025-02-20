@@ -23,8 +23,8 @@ export function sendEmailWithNodemailer(req, res, emailData, customMsg) {
       ciphers: "SSLv3",
       rejectUnauthorized: false
     },
-    debug: true, // Debug logs
-    logger: true // Log details
+    debug: false, // Debug logs
+    logger: false // Log details
   });
 
   return transporter
