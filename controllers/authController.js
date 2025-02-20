@@ -83,9 +83,7 @@ export async function signup(req, res) {
   const token = req.body.token; // User's info is in `token` {token: {name, email, password}}
 
   if (!token) {
-    return res.status(400).json({
-      error: "Invalid request. Token missing.",
-    });
+    return res.status(400).json({ error: "Invalid request. Token missing." });
   }
 
   try {
@@ -100,7 +98,16 @@ export async function signup(req, res) {
     // Extract user details from the decoded token
     const { name, email, password } = decoded;
 
-    // Generate a unique username
+    // Check if the user already exists
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res.status(400).json({
+        error: "This account is already activated. Please sign in.",
+      });
+    }
+
+    // Generate a unique username and profile URL
     const username = shortId.generate();
     const profile = `${process.env.CLIENT_URL}/profile/${username}`;
 
@@ -110,13 +117,15 @@ export async function signup(req, res) {
     // Save new user in the database
     await user.save();
 
-    return res.json({
-      message: "Signup success! Please signin :)",
-    });
+    return res.json({ message: "Signup success! Please sign in." });
 
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ error: "This email is already registered. Please sign in." });
+    }
+
     return res.status(400).json({
-      error: "Expired or invalid token. Please signup again." + err,
+      error: "Expired or invalid token. Please signup again.",
     });
   }
 }
