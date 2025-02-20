@@ -4,93 +4,111 @@ import { errorHandler } from '../helpers/dbErrorHandler.js';
 import Category from '../models/category.js';
 
 // create a category
-export function create(req, res) {
-  const { name } = req.body;
-  let slug = slugify(name)
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+export async function create(req, res) {
+  try {
+    const { name } = req.body;
 
-  let category = new Category({ name, slug });
-
-  category.save((err, data) => {
-    if (err) {
-      return res.status(400).json({
-        // error: err
-        error: errorHandler(err)
-      });
+    // Validate input: Ensure the category name is not empty
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: "Category name is required." });
     }
-    res.json(data);
-  });
+
+    // Generate slug using your custom slugify logic
+    const slug = slugify(name)
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Remove non-word characters except spaces and hyphens
+      .replace(/[\s_-]+/g, '-') // Replace multiple spaces/hyphens/underscores with a single hyphen
+      .replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
+
+    // Check if category already exists
+    const existingCategory = await Category.findOne({ slug });
+    if (existingCategory) {
+      return res.status(400).json({ error: "Category already exists." });
+    }
+
+    // Create and save new category
+    const category = new Category({ name, slug });
+    const savedCategory = await category.save();
+
+    res.json(savedCategory);
+
+  } catch (err) {
+    console.error("CATEGORY CREATION ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 }
 
+// ----------------------------------------------
 
 // to get list of all the categories
-export function list(req, res) {
+export async function list(req, res) {
+  try {
+    // Fetch all categories from the database
+    const categories = await Category.find({});
 
-  Category.find({}).exec((err, data) => {
-    if (err) {
-      return res.status(400).json({
-        error: errorHandler(err)
-      });
+    if (!categories.length) {
+      return res.json({ message: "No categories found", categories: [] });
     }
-    res.json(data);
-  });
+
+    res.json(categories);
+  } catch (err) {
+    console.error("CATEGORY LIST ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 }
+
+
 // Note: find ({}) -> Empty Parenthiesis/Object == return all the elements/categories
 
 
 // to get single category   (& return all the blogs with that category)
-export function read(req, res) {
-  const slug = req.params.slug.toLowerCase();
+export async function read(req, res) {
+  try {
+    const slug = req.params.slug.toLowerCase();
 
-  // Finding the 'category' through the category-slug & below using that category object response to find all the blogs having that category
-  Category.findOne({ slug }).exec((err, category) => {
-    if (err) {
-      return res.stataus(400).json({
-        error: errorHandler(err)
-      });
+    // Find the category by slug
+    const category = await Category.findOne({ slug });
+
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
     }
-    // console.log(category);
-    // res.json(category);   //  return category (category ObjectID) of the selected blog (based on slug)  [Moved - passed below,alongwith the blogs having the same category ]
 
-    // Find all the blogs based on this Category (category objectID)(checking 'categories' field/column for the selected Blog's category in the Blog Model and return the blogs)
-    Blog.find({ categories: category })
-      .populate('categories', '_id name slug')
-      .populate('tags', '_id name slug')
-      .populate('postedBy', '_id name username profile')
-      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt')
-      .exec((err, data) => {
-        if (err) {
-          return res.stataus(400).json({
-            error: errorHandler(err)
-          });
-        }
+    // Find all blogs that belong to this category
+    const blogs = await Blog.find({ categories: category._id }) // Match category by ID
+      .populate('categories', '_id name slug') // Populate categories field
+      .populate('tags', '_id name slug') // Populate tags field
+      .populate('postedBy', '_id name username profile') // Populate author details
+      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt'); // Select necessary fields
 
-        res.json({ category: category, blogs: data }); // sending the json response with the results (list of blogs having same category & the category object itself)
-        // console.log(JSON.stringify({ category, blogs: data }));
-      });
+    // Respond with category details and associated blogs
+    res.json({ category, blogs });
 
-  });
+  } catch (err) {
+    console.error("CATEGORY READ ERROR:", err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
 
 
 // to remove/delete a category
-export function remove(req, res) {
-  const slug = req.params.slug.toLowerCase();
+export async function remove(req, res) {
+  try {
+    const slug = req.params.slug.toLowerCase();
 
-  Category.findOneAndRemove({ slug }).exec((err, data) => {
-    if (err) {
-      return res.stataus(400).json({
-        error: errorHandler(err)
-      });
+    // Find and delete the category by slug
+    const deletedCategory = await Category.findOneAndRemove({ slug });
+
+    if (!deletedCategory) {
+      return res.status(404).json({ error: 'Category not found' });
     }
-    res.json({
-      message: 'Category deleted sucessfully'
-    });
-  });
+
+    res.json({ message: 'Category deleted successfully' });
+
+  } catch (err) {
+    console.error("CATEGORY DELETE ERROR:", err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
 
 

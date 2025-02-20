@@ -23,67 +23,50 @@ export function read(req, res) {
 // ----------------------------------------------------------------
 
 // for Public Profile (Response: User Public Profile + User's Blogs)
-export function publicProfile(req, res) {
-  let username = req.params.username; // 'username' will be passed through URL query parameters
+export async function publicProfile(req, res) {
+  try {
+    const username = req.params.username; // Extract username from URL parameters
 
-  // console.log("username in request --->", username);
+    console.log(`Fetching public profile for user: ${username}`);
 
-  let user;
-  let blogs;
+    // Find the user by username
+    const user = await User.findOne({ username });
 
-  User.findOne({ username })
-    .exec((err, userFromDB) => {
+    if (!user) {
+      console.log(`User '${username}' not found.`);
+      return res.status(400).json({ error: 'User not found!' });
+    }
 
-      if (err || !userFromDB) {
+    // Store user ID for querying their blogs
+    const userId = user._id;
 
-        console.log(`Error in finding '${username}' user --->`, err);
+    // ---------------- REMOVING SENSITIVE FIELDS ----------------
+    user.photo = undefined; // Exclude profile photo to keep response lightweight
+    user.hashed_password = undefined; // Exclude hashed password for security
+    user.salt = undefined; // Exclude password salt to prevent security risks
+    user.resetPasswordLink = undefined; // Exclude password reset link for security
+    user.email = undefined; // Exclude email to protect user privacy
+    // ----------------------------------------------------------
 
+    console.log(`User '${username}' found. Fetching their blogs...`);
 
-        return res.status(400).json({
-          error: 'User not found!'
-        });
-      }
+    // Fetch blogs posted by this user
+    const blogs = await Blog.find({ postedBy: userId })
+      .populate('categories', '_id name slug') // Populate category details
+      .populate('tags', '_id name slug') // Populate tag details
+      .populate('postedBy', '_id name') // Populate author details
+      .limit(10) // Limit results to the latest 10 blogs
+      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt');
 
-      user = userFromDB; // selected User object 
+    console.log(`Fetched ${blogs.length} blogs for user '${username}'.`);
 
-      let userId = user._id;
+    // Return user's public profile along with their blogs
+    res.json({ user, blogs });
 
-
-      // console.log(" User.finOne called ------------------------\n");
-
-      // ------------ REMOVING CERTAIN FEILDS ------------
-      user.photo = undefined; // we are not sending user profile Photo as this will make response heavy
-      user.hashed_password = undefined; // Removing the hashed_password from the response
-      user.salt = undefined; // Removing the hashed_password's SALT from the response
-      user.resetPasswordLink = undefined; // Could be a potential security Risk if passed to public Profile response
-      user.email = undefined; // Could be a potential security Risk if passed to public Profile response (if user does not want to reveal email)
-      // console.log("User Details --------->", user);
-      // ---------------------------------------------
-
-      // Now finding BLOGS by this User and returning the Blogs by this user along with User's Public Profile data
-      Blog.find({ postedBy: userId })
-        .populate('categories', '_id name slug')
-        .populate('tags', '_id name slug')
-        .populate('postedBy', '_id name')
-        .limit(10) // We are sending/showing only limited number of blogs to show for the selected user (10 latest) in response
-        .select('_id title slug excerpt categories tags postedBy createdAt updatedAt')
-        .exec((err, data) => {
-
-          if (err) {
-
-
-            return res.status(400).json({
-              error: errorHandler(err)
-            });
-          }
-
-          res.json({
-            user, blogs: data
-          });
-          // Response: User -> user public profile , blogs -> Blogs by this user
-        });
-
-    });
+  } catch (err) {
+    console.error(`PUBLIC PROFILE ERROR:`, err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
 
 
@@ -91,90 +74,82 @@ export function publicProfile(req, res) {
 // --------------------------------------------------------
 //  User Profile Update middleware (to handle Profile details Update requests from users)
 
-export function update(req, res) {
+export async function update(req, res) {
+  try {
+    let form = new IncomingForm();
+    form.keepExtensions = true;
 
-  let form = new IncomingForm(); // instanciating a new form object
-  form.keepExtension = true;
-
-  form.parse(req, (err, fields, files) => { // we are getting formdata from 'req' / request only (through body)
-    if (err) {
-      return res.status(400).json({
-        error: 'Photo could not be uploaded'
-      });
-    }
-    // ------------------
-
-    // else (we'll create the user if there's no error )
-    let user = req.profile; // 'profile' -(loggedin user object) is available (passed) in request object through the earlier middleware that is applied - 'authmiddleware'
-
-    // user's existing role and email before update
-    let existingRole = user.role;
-    let existingEmail = user.email;
-
-    // validations
-    if (fields && fields.username && fields.username.length > 12) {
-      return res.status(400).json({
-        error: 'Username should be less than 12 characters long'
-      });
-    }
-
-    if (fields.username) {
-      fields.username = slugify(fields.username).toLowerCase();
-    }
-
-    // ------------- Password Validator -----------------
-
-    // Note: Although we have same validation on backend /database model validation too, but it's better to handle these simple validations on frontned client side directly to reduce API calls    
-    if (fields.password && fields.password.length < 6) {
-      return res.status(400).json({
-        error: 'Password should be min 6 characters long'
-      });
-    }
-    // Note: we have not used Express validator here because that works only with json data, not Form data
-
-
-
-    user = _.extend(user, fields); // Changed 'fields' will be merged with the user using the extend Lodash method
-
-    // user's existing role and email - dont update - keep it same
-    user.role = existingRole;
-    user.email = existingEmail;
-
-
-
-    // handling files - photos ----------------------
-    if (files.photo) {
-      // checking file size restriction - 1 MB
-      if (files.photo.size > 1048576) {
-        return res.status(400).json({
-
-          error: 'Image should be less than 1 MB'
-        });
-      }
-
-      user.photo.data = readFileSync(files.photo.path);
-      user.photo.contentType = files.photo.type;
-
-    }
-
-    // now Saving to user object in DB
-    user.save((err, result) => {
+    // Parse form data asynchronously
+    form.parse(req, async (err, fields, files) => {
       if (err) {
-        console.log('profile udpate error', err);
-        return res.status(400).json({
-          error: errorHandler(err)
-        });
+        return res.status(400).json({ error: "Photo could not be uploaded" });
       }
 
-      user.hashed_password = undefined; //   removing from response
-      user.salt = undefined; //  removing from response
-      user.photo = undefined; //  removing from response
+      // Retrieve the user profile from the request (provided by authMiddleware)
+      let user = req.profile;
 
-      res.json(user);
+      // Preserve existing role and email
+      const existingRole = user.role;
+      const existingEmail = user.email;
+
+      // Validate username length
+      if (fields.username && fields.username.length > 12) {
+        return res.status(400).json({ error: "Username should be less than 12 characters long" });
+      }
+
+      // Ensure username is a string and slugify it
+      if (fields.username) {
+        if (Array.isArray(fields.username)) {
+          fields.username = fields.username[0]; // Convert array to string if needed
+        }
+        fields.username = slugify(fields.username).toLowerCase();
+      }
+
+      // Validate password length
+      if (fields.password && fields.password.length < 6) {
+        return res.status(400).json({ error: "Password should be at least 6 characters long" });
+      }
+
+      // Ensure profile is a string
+      if (fields.profile) {
+        if (Array.isArray(fields.profile)) {
+          fields.profile = fields.profile[0]; // Convert array to string if needed
+        }
+      }
+
+      // Merge new fields into the user object
+      user = _.extend(user, fields);
+
+
+      // Preserve existing role and email
+      user.role = existingRole;
+      user.email = existingEmail;
+
+      // Handle profile picture upload
+      if (files.photo) {
+        if (files.photo.size > 1048576) {
+          return res.status(400).json({ error: "Image should be less than 1 MB" });
+        }
+
+        user.photo.data = readFileSync(files.photo.path);
+        user.photo.contentType = files.photo.type;
+      }
+
+      // Save updated user to the database
+      const updatedUser = await user.save();
+
+      // Remove sensitive fields before sending response
+      updatedUser.hashed_password = undefined;
+      updatedUser.salt = undefined;
+      updatedUser.photo = undefined;
+
+      res.json(updatedUser);
     });
 
-  });
-
+  } catch (err) {
+    console.error("PROFILE UPDATE ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 }
 
 
@@ -182,23 +157,27 @@ export function update(req, res) {
 // ---------------------------------------------------------
 
 // For USER Photo
-export function photo(req, res) {
-  // First grab the username (and then search for that user's photo)
-  const username = req.params.username;
+export async function photo(req, res) {
+  try {
+    const username = req.params.username;
 
-  // find the user
-  User.findOne({ username }).exec((err, user) => {
-    if (err || !user) {
-      return res.status(400).json({
-        error: 'User not found'
-      });
+    // Find the user by username
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
     }
 
-    if (user.photo.data) {
+    // Check if the user has a photo
+    if (user.photo && user.photo.data) {
       res.set('Content-Type', user.photo.contentType);
-
       return res.send(user.photo.data);
     }
-  });
 
+    return res.status(404).json({ error: 'Photo not found' });
+
+  } catch (err) {
+    console.error("USER PHOTO ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 }

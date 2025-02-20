@@ -5,89 +5,104 @@ import Tag from '../models/tag.js';
 
 
 // create a tag
-export function create(req, res) {
-  const { name } = req.body;
-  let slug = slugify(name)
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+export async function create(req, res) {
+  try {
+    const { name } = req.body;
 
-  let tag = new Tag({ name, slug });
-
-  tag.save((err, data) => {
-    if (err) {
-      return res.status(400).json({
-        error: errorHandler(err)
-      });
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: "Tag name is required." });
     }
-    res.json(data); // Don't do this - res.json({tag: data})
-  });
+
+    // Generate slug using your custom slugify logic
+    const slug = slugify(name)
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Remove non-word characters except spaces and hyphens
+      .replace(/[\s_-]+/g, '-') // Replace multiple spaces/hyphens/underscores with a single hyphen
+      .replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
+
+    // Check if tag already exists
+    const existingTag = await Tag.findOne({ slug });
+    if (existingTag) {
+      return res.status(400).json({ error: "Tag already exists." });
+    }
+
+    // Create and save new tag
+    const tag = new Tag({ name, slug });
+    const savedTag = await tag.save();
+
+    res.json(savedTag);
+
+  } catch (err) {
+    console.error("TAG CREATION ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 }
+
+// --------------------------------------------
 
 // to get list of all tags
-export function list(req, res) {
+export async function list(req, res) {
+  try {
+    // Fetch all tags from the database
+    const tags = await Tag.find({});
 
-  Tag.find({}).exec((err, data) => {
-    if (err) {
-      return res.status(400).json({
-        error: errorHandler(err)
-      });
-    }
-    res.json(data);
-  });
+    res.json(tags); // Return the list of tags as JSON response
+  } catch (err) {
+    console.error("TAG LIST ERROR:", err);
+    return res.status(400).json({ error: errorHandler(err) });
+  }
 }
+
 // Note: find ({}) -> Empty Parenthiesis/Object == return all the elements/tags
 
 
 // to get single tag
-export function read(req, res) {
-  // const slug = req.params.tagName
-  const slug = req.params.slug.toLowerCase();
+export async function read(req, res) {
+  try {
+    const slug = req.params.slug.toLowerCase();
 
-  Tag.findOne({ slug }).exec((err, tag) => {
-    if (err) {
-      return res.stataus(400).json({
-        error: errorHandler(err)
-      });
+    // Find the tag by slug
+    const tag = await Tag.findOne({ slug });
+
+    if (!tag) {
+      return res.status(404).json({ error: 'Tag not found' });
     }
-    // res.json(tag);   // this response is now send below alongwith Blogs having same tag 
 
-    // Find all the blogs based on this Tag (Tag objectID)(checking 'tags' field/column for the selected Blog's tag in the Blog Model and return the blogs with same tag)
+    // Find all blogs that contain this tag
+    const blogs = await Blog.find({ tags: tag._id })
+      .populate('categories', '_id name slug') // Populate categories
+      .populate('tags', '_id name slug') // Populate associated tags
+      .populate('postedBy', '_id name username profile') // Populate author details
+      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt'); // Select required fields only
 
-    // Look for the selected 'tag' objectID inside the Blogs 'tags' field column & grab those blogs having same tag
-    Blog.find({ tags: tag })
-      .populate('categories', '_id name slug')
-      .populate('tags', '_id name slug')
-      .populate('postedBy', '_id name username profile')
-      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt')
-      .exec((err, data) => {
-        if (err) {
-          return res.stataus(400).json({
-            error: errorHandler(err)
-          });
-        }
+    // Respond with the tag details and associated blogs
+    res.json({ tag, blogs });
 
-        res.json({ tag: tag, blogs: data }); // sending the json response with the results (list of blogs having same tag & the tag object itself)
-      });
-  });
+  } catch (err) {
+    console.error("TAG READ ERROR:", err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
 
 
 // to remove/delete a Tag
-export function remove(req, res) {
-  // const slug = req.params.tagName
-  const slug = req.params.slug.toLowerCase();
+export async function remove(req, res) {
+  try {
+    const slug = req.params.slug.toLowerCase();
 
-  Tag.findOneAndRemove({ slug }).exec((err, data) => {
-    if (err) {
-      return res.stataus(400).json({
-        error: errorHandler(err)
-      });
+    // Find and delete the tag by slug
+    const deletedTag = await Tag.findOneAndRemove({ slug });
+
+    if (!deletedTag) {
+      return res.status(404).json({ error: 'Tag not found' });
     }
-    res.json({
-      message: 'Tag deleted sucessfully'
-    });
-  });
+
+    res.json({ message: 'Tag deleted successfully' });
+
+  } catch (err) {
+    console.error("TAG DELETE ERROR:", err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
+

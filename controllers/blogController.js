@@ -3,7 +3,7 @@
 // }; // Used for testing purpose
 
 import { stripHtml } from 'string-strip-html';
-import { IncomingForm } from 'formidable';  // To handle parsing form data, especially file uploads.
+import formidable from 'formidable';  // To handle parsing form data, especially file uploads.
 import { readFileSync } from 'fs';
 import _ from 'lodash';
 import slugify from 'slugify';
@@ -33,148 +33,76 @@ process.on('uncaughtException', err => {
 
 // -----------------------------------------------------------------
 // Create New Blog 
-export function create(req, res) {
 
-  // Step 1: get the data from FORM
-  let form = new IncomingForm(); // This was to get all the FORM data
-  // console.log(form);
-  form.keepExtensions = true; // keep original file extensions
-  // Parse the Form Data so that we get all data as valid js object
-  form.parse(req, (err, fields, files) => {
-    if (err) {
-      return res.status(400).json({
-        error: 'Image could not upload'
-      });
-    }
+export async function create(req, res) {
+  try {
+    let form = new formidable.IncomingForm();
+    form.keepExtensions = true;
 
-    //----------------------------------------------
-
-    // if there's no error, then grabbing the Blog details through "fields" 
-    const { title, body, categories, tags } = fields;
-
-    //===============================================
-    // Manual Validators for Form data
-
-    if (!title || !title.length) {
-      return res.status(400).json({
-        error: 'title is required'
-      });
-    };
-
-    if (!body || body.length < 200) {
-      return res.status(400).json({
-        error: 'Content is too short for a Blog.'
-      });
-    };
-
-    if (!categories || categories.length === 0) {
-      return res.status(400).json({
-        error: 'At least one Category is required.'
-      });
-    };
-
-    if (!tags || tags.length === 0) {
-      return res.status(400).json({
-        error: 'At least one Tag is required.'
-      });
-    };
-
-    //=======================================
-
-    let blog = new Blog(); // Instantiating the new Blog Model
-    //-----------------------------
-    // blog.title = fields.title;
-    blog.title = title;
-    blog.body = body;
-    // blog.excerpt = smartTrim(body, 320, ' ', ' ...'); // Author's trim method
-    blog.excerpt = htmlToTextTrimWithEllipses(body, 320); // My own trim method (ignores href)
-
-    blog.slug = slugify(title)
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    // .replace(/['"]+/g, '');
-
-    blog.mtitle = `${title} | ${process.env.APP_NAME}`; // blog meta-title = > title | APP NAME e.g. HOW TO FILL ITR | SEO BLOG
-
-    blog.mdesc = stripHtml(body.substring(0, 160)).result;  // Meta-Description - we are extracting metadescription from blog's first 160 characters
-
-    blog.postedBy = req.user._id;  // Currently logged in user. NOTE: we are getting req.user bcoz we have applied middle - requireSignIn - so we'll have 'user' available in user object.
-    /*
-    >> requireSignin middleware adds the user to the req object 
-    Its done by express-jwt.
-    The JWT authentication middleware authenticates callers using a JWT. If the token is valid, req.user will be set with the JSON object decoded to be used by later middleware for authorization and access control.
-    */
-
-    //-----------------------------
-
-    // categories and tags
-    let arrayOfCategories = categories && categories.split(',');
-    let arrayOfTags = tags && tags.split(',');
-
-    //-----------------------------
-    // Handling Files (like Images/docs)
-    if (files.photo) {
-      // Validating 1 MB file restriction
-      if (files.photo.size > 1048576) {
-        return res.status(400).json({
-          error: 'Image should be less than 1 MB in size.'
-        });
-      };
-      // If image size is les than 1 MB, then we can create a blog now.
-      // Check blog's photo model, it has "data" & "contentType" property
-      blog.photo.data = readFileSync(files.photo.path);
-      blog.photo.contentType = files.photo.type;
-
-    };
-
-
-
-    // Save blog in DB Database 
-    blog.save((err, result) => {
+    // Parse the form data
+    form.parse(req, async (err, fields, files) => {
       if (err) {
-        console.log('BLOG SAVE ERROR =====>>>>>>>', err);
-        return res.status(400).json({
-          error: errorHandler(err)
-        });
+        return res.status(400).json({ error: 'Image could not be uploaded' });
       }
 
-      // res.json(result);
-      // on sucessful submission (save blog in database), returning response
+      // Extracting required fields
+      const { title, body, categories, tags } = fields;
 
+      // Manual validation checks
+      if (!title || !title.length) return res.status(400).json({ error: 'Title is required' });
+      if (!body || body.length < 200) return res.status(400).json({ error: 'Content is too short for a blog.' });
+      if (!categories || categories.length === 0) return res.status(400).json({ error: 'At least one category is required.' });
+      if (!tags || tags.length === 0) return res.status(400).json({ error: 'At least one tag is required.' });
 
-      // Pushing Categories in the Blog now
-      Blog.findByIdAndUpdate(result._id, { $push: { categories: arrayOfCategories } }, { new: true }).exec((err, result) => {
-        if (err) {
-          return res.status(400).json({
-            error: errorHandler(err)
-          });
-        }
+      // Creating a new blog instance
+      let blog = new Blog({
+        title,
+        body,
+        // excerpt = smartTrim(body, 320, ' ', ' ...'), // Author's trim method
+        excerpt: htmlToTextTrimWithEllipses(body, 320), // Generating an excerpt - My own trim method (ignores href)
+        // slug: slugify(title, { lower: true, strict: true }),
 
-        else {
+        slug: slugify(title)
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '') // Remove non-word characters except spaces and hyphens
+        .replace(/[\s_-]+/g, '-') // Replace spaces, underscores, or multiple hyphens with a single hyphen
+        .replace(/^-+|-+$/g, ''), // Remove leading or trailing hyphens
+        // .replace(/['"]+/g, ''),
 
-          // Pushing TAGS into the Blog now
-          Blog.findByIdAndUpdate(result._id, { $push: { tags: arrayOfTags } }, { new: true }).exec((err, result) => {
-            if (err) {
-              return res.status(400).json({
-                error: errorHandler(err)
-              });
-            } else {
-
-              res.json(result);
-
-            }
-          });
-        }
+        mtitle: `${title} | ${process.env.APP_NAME}`, // Meta title
+        mdesc: stripHtml(body.substring(0, 160)).result, // Meta description - we are extracting metadescription from blog's first 160 characters
+        postedBy: req.user._id, // Logged-in user ID
       });
 
+      // Convert category and tag strings to arrays
+      let arrayOfCategories = categories.split(',');
+      let arrayOfTags = tags.split(',');
 
+      // Handling image uploads
+      if (files.photo) {
+        if (files.photo.size > 1048576) {
+          return res.status(400).json({ error: 'Image should be less than 1 MB in size.' });
+        }
+        blog.photo.data = readFileSync(files.photo.path);
+        blog.photo.contentType = files.photo.type;
+      }
+
+      // Save blog to the database
+      const savedBlog = await blog.save();
+
+      // Push categories and tags after saving
+      await Blog.findByIdAndUpdate(savedBlog._id, { $push: { categories: arrayOfCategories } }, { new: true });
+      const updatedBlog = await Blog.findByIdAndUpdate(savedBlog._id, { $push: { tags: arrayOfTags } }, { new: true });
+
+      res.json(updatedBlog);
     });
-  });
-
+  } catch (err) {
+    console.error('CREATE BLOG ERROR:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
+
 
 // NOTE: We had used type: 'ObjectId' in Models for category, tags, and users for a reason, to so that we can access those collections from another Models -like here from blog Model, using 'populate()'
 
@@ -190,7 +118,7 @@ export function create(req, res) {
 
 //  list, listAllBlogsCategoriesTags, read, remove, update
 //--------------------------------------------------------------------------------------------------------------------------------
-export function list(req, res) {
+export async function list(req, res) {
   // get all the blogs
 
   // populate(<path> , <select>, <model>,...)
@@ -198,21 +126,18 @@ export function list(req, res) {
   // [select] «Object|String» Field (columns) selection for the population query
 
   // Below, first we are 'populating' the ObjectID properties with the fields from their respective 'ref' referenced models and then we are running 'select' query on the overall query result that we are getting after populating everything.
-  Blog.find({})
-    .populate('categories', '_id name slug')
-    .populate('tags', '_id name slug')
-    .populate('postedBy', '_id name username')
-    .sort({ updatedAt: -1 }) // Sorting the Blogs list (latest comes first)
-    .select('_id title slug excerpt categories tags postedBy createdAt updatedAt') // Note that we aren't taking 'photos' field here because that'd be very big (binary coded here in DB) and that'll make it very slow
-    .exec((err, data) => {
-      if (err) {
-        return res.json({
-          error: errorHandler(err)
-        });
-      }
-      res.json(data);
-    });
+  try {
+    const blogs = await Blog.find({})
+      .populate('categories', '_id name slug')
+      .populate('tags', '_id name slug')
+      .populate('postedBy', '_id name username')
+      .sort({ updatedAt: -1 }) // Sorting the Blogs list (latest comes first)
+      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt'); // Note that we aren't taking 'photos' field here because that'd be very big (binary coded here in DB) and that'll make it very slow
 
+    res.json(blogs);
+  } catch (err) {
+    res.json({ error: errorHandler(err) });
+  }
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -221,35 +146,25 @@ export function list(req, res) {
 
 // List / send All the Blogs created by this specific user based on username
 
-export function listBlogsByUser(req, res) {
-  User.findOne({ username: req.params.username }) // Finding the User with this username first
-    .exec((err, user) => {
-      if (err) {
-        return res.status(400).json({
-          error: errorHandler(err)
-        });
-      }
-      // We found the user
-      let userId = user._id; // grabbing the User ID of the User to find the blogs by his user ID (in postedBy)
+export async function listBlogsByUser(req, res) {
+  try {
+    const user = await User.findOne({ username: req.params.username });
 
-      // .select('_id title slug excerpt categories tags postedBy createdAt updatedAt');
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
-      Blog.find({ postedBy: userId })
-        .populate('categories', '_id name slug')
-        .populate('tags', '_id name slug')
-        .populate('postedBy', '_id name username')
-        .sort({ updatedAt: -1 }) // Sorting the Blogs list (latest comes first)
-        .select('_id title slug postedBy createdAt updatedAt')
-        .exec((err, data) => {
-          if (err) {
-            return res.status(400).json({
-              error: errorHandler(err)
-            });
-          }
+    const blogs = await Blog.find({ postedBy: user._id })
+      .populate('categories', '_id name slug')
+      .populate('tags', '_id name slug')
+      .populate('postedBy', '_id name username')
+      .sort({ updatedAt: -1 }) // Sorting the Blogs list (latest comes first)
+      .select('_id title slug postedBy createdAt updatedAt');
 
-          res.json(data); // returning all the Blogs of this User details based on username 
-        });
-    });
+    res.json(blogs);
+  } catch (err) {
+    res.status(400).json({ error: errorHandler(err) });
+  }
 }
 
 
@@ -258,357 +173,229 @@ export function listBlogsByUser(req, res) {
 // List all Blogs (with Category & Tags) on the /blogs page
 
 export async function listAllBlogsCategoriesTags(req, res) {
-  // get and Send all the blogs along with all the Categories & tags also (useful for SEO optimization)
-
-  // Kind of PAGINATION
-
-  // limit = how many number of blog posts we want to send in each request (we will get this from frontend)
-  // we have set Default value = 10
-  let limit = req.body.limit ? parseInt(req.body.limit) : 10;
-
-  // skip blogs
-  let skip = req.body.skip ? parseInt(req.body.skip) : 0;
-
-  let blogs;
-  let categories;
-  let tags;
-
-
   try {
-    const data = await Blog.find({})
+    // Set pagination values (default: limit = 10, skip = 0)
+    const limit = req.body.limit ? parseInt(req.body.limit) : 10;
+    const skip = req.body.skip ? parseInt(req.body.skip) : 0;
+
+    // Fetch blogs with necessary relationships
+    const blogs = await Blog.find({})
       .populate('categories', '_id name slug')
       .populate('tags', '_id name slug')
       .populate('postedBy', '_id name username profile')
-      .sort({ createdAt: -1 }) // Sorting the Blogs list (latest comes first)
+      .sort({ createdAt: -1 }) // Fetch latest blogs first
       .skip(skip)
       .limit(limit)
-      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt')
-      .exec();
+      .select('_id title slug excerpt categories tags postedBy createdAt updatedAt');
 
-    blogs = data; // blogs
+    // Fetch all categories and tags
+    const categories = await Category.find({});
+    const tags = await Tag.find({});
 
-    // -----------------------------------------------
-    // get all categories
-    const c = await Category.find({}).exec();
-    categories = c; // categories
-
-    //-----------------------------------------------
-    //get all tags
-    const t = await Tag.find({}).exec();
-    tags = t; // tags
-
-    //-----------------------------------------------
-    //return all blogs, categories and Tags
-    res.json({ blogs, categories, tags, size: blogs.length }); // We will use current size of blogs returned to frontend, for LOAD MORE button on frontend
+    // Return blogs, categories, tags, and the count of blogs for pagination
+    res.json({ blogs, categories, tags, size: blogs.length });
 
   } catch (err) {
-    return res.json({
-      error: errorHandler(err)
-    });
+    console.error("LIST BLOGS-CATEGORIES-TAGS ERROR:", err);
+    return res.status(500).json({ error: errorHandler(err) });
   }
-
 }
+
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
 // Get Single blog from backend database - Read blog
-export function read(req, res) {
+export async function read(req, res) {
   // get a single blog (very Important from SEO perspective because whenever Search engines look for this Blog page, they will get only that content that you'll return here)
-  const slug = req.params.slug.toLowerCase();
 
-  Blog.findOne({ slug })
-    // .select("-photo")  // If you don't want to send 'photo' 
+  try {
+    const slug = req.params.slug.toLowerCase();
+
+    const blog = await Blog.findOne({ slug })
     .populate('categories', '_id name slug')
     .populate('tags', '_id name slug')
     .populate('postedBy', '_id name username')
-    .select('_id title body slug mtitle mdesc categories tags postedBy createdAt updatedAt') // Note that we have returned (selected) body, meta-title and meta-description here => importatnt for SEO - search engine crawlers
-    .exec((err, data) => {
-      // console.log("err object--> ", err);
-      // console.log("data object-->", data);
+    .select('_id title body slug mtitle mdesc categories tags postedBy createdAt updatedAt');
+    // .select("-photo")  // If you don't want to send 'photo' 
 
-      if (err) {
-        console.log("ERROR OCCURED =====>  ", err);
-        return res.json({
-          error: errorHandler(err)
-        });
-      }
+    if (!blog) {
+      return res.status(404).json({ error: "No Blog exists with this slug. Please check" });
+    }
 
-      else if (data === null) {
-        return res.status(404).json({
-          error: "No Blog exists with this slug. Please Check"
-        });
-      }
-
-      res.json(data);
-
-    });
+    res.json(blog);
+  } catch (err) {
+    console.error("ERROR OCCURRED =====> ", err);
+    res.status(400).json({ error: errorHandler(err) });
+  }
 }
+
 
 //-------------------------------------------------------
 
 // Delete a Blog
-export function remove(req, res) {
-  // remove a single blog
-  const slug = req.params.slug.toLowerCase();
+export async function remove(req, res) {
+  try {
+    const slug = req.params.slug.toLowerCase();
 
-  Blog.findOneAndRemove({ slug }).exec((err, data) => {
-    if (err) {
-      return res.json({
-        error: errorHandler(err)
-      });
+    // Find and delete the blog by slug
+    const deletedBlog = await Blog.findOneAndRemove({ slug });
+
+    if (!deletedBlog) {
+      return res.status(404).json({ error: "No Blog exists. Please check" });
     }
 
-    else if (data === null) {
-      return res.status(404).json({
-        error: "No Blog exists. Please Check"
-      });
-    }
-
-    res.json({
-      message: 'Blog deleted successfully'
-    });
-  });
-
+    res.json({ message: "Blog deleted successfully" });
+  } catch (err) {
+    console.error("DELETE BLOG ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 }
+
 
 
 
 //-----------------------------------------------------
 // Update Blog is similar to 'Create' function
-export function update(req, res) {
-  //  Update blog
-  const slug = req.params.slug.toLowerCase();
 
-  Blog.findOne({ slug }).exec((err, oldBlog) => {
-    if (err) {
-      return res.status(400).json({
-        error: errorHandler(err)
-      });
+export async function update(req, res) {
+  try {
+    const slug = req.params.slug.toLowerCase();
+
+    // Find the blog by slug
+    let oldBlog = await Blog.findOne({ slug });
+
+    if (!oldBlog) {
+      return res.status(404).json({ error: "Blog not found" });
     }
 
-    let form = new IncomingForm(); // form data variable
-    form.keepExtensions = true; // keep original file extensions
+    let form = new formidable.IncomingForm();
+    form.keepExtensions = true;
 
-    // Parse the Form Data so that we get all data as valid js object
-    form.parse(req, (err, fields, files) => {
+    // Parse the form data
+    form.parse(req, async (err, fields, files) => {
       if (err) {
-        return res.status(400).json({
-          error: 'Image could not upload'
-        });
+        return res.status(400).json({ error: 'Image could not upload' });
       }
 
-      //-------------------------------------
+      let slugBeforeMerge = oldBlog.slug; // Preserve slug to avoid SEO issues
+      oldBlog = _.merge(oldBlog, fields); // Merge new fields with existing blog
+      oldBlog.slug = slugBeforeMerge; // Ensure slug remains unchanged
 
-      //_____________ Note: Since while updating we might not update everything !! so we are using LODASH library which will provide 'MERGE' function to update only what is needed.
-      // MERGE() --> The _.merge() method is used to merge two or more objects starting with the left-most to the right-most to create a parent mapping object. When two keys are the same, the generated object will have value for the rightmost key.
-
-      /* Even if user updates title or anything, SLUG should never change ,
-       WHy? because Once you publish blog, its URL gets indexes by search engines and if you change it,
-        then search engines will not find it on the same url, that will result in Poor ranking - Bad for SEO.
-        */
-      let slugBeforeMerge = oldBlog.slug;
-
-      // oldBlogs --> old Blog Data
-      // fields  ---> updated new fields/data from client side
-      //Note: (Right to Left Merge happens)
-      oldBlog = _.merge(oldBlog, fields); // If anything changes, then only it'll be updated (New updated Column/fields will be Merged with oldBlogs columns), else it'll be merged without any change. 
-
-      // console.log("After Merger", oldBlog);
-      oldBlog.slug = slugBeforeMerge; // Taking Precaution to keep it Old, in case someone manually passses slug parameter (to prevent this update)
-
-
-      // if there's no error, then grabbing the Blog details through "fields" 
       const { title, body, categories, tags } = fields;
-      // console.log(title.length, typeof title, 'title hai ? ------======> ', title);
-      //===============================================
-      // Change Excerpt Only if Body has changed ! 
 
-      // Checking if "body" is present in newly updated blog (if defined in fields or not [undefined])
+      // If body is updated, update excerpt and meta description
       if (body) {
-        // oldBlog.excerpt = smartTrim(body, 320, ' ', ' ...'); // Author's trim method
-        oldBlog.excerpt = htmlToTextTrimWithEllipses(body, 320); // My own trim method (ignores href)
+        oldBlog.excerpt = htmlToTextTrimWithEllipses(body, 320);
+        oldBlog.mdesc = stripHtml(body.substring(0, 160)).result;
+      }
 
-        oldBlog.mdesc = stripHtml(body.substring(0, 160)).result; // New updated meta-description based on new Body content
-      };
+      // If categories/tags are updated, convert them into an array
+      if (categories) oldBlog.categories = categories.split(',');
+      if (tags) oldBlog.tags = tags.split(',');
 
-      // Change categories Only if categories has changed ! 
-      if (categories) {
-        oldBlog.categories = categories.split(','); // split will generate a array of categories
-      };
-
-      // Change tags Only if tags (is present in fields) has changed ! 
-      if (tags) {
-        oldBlog.tags = tags.split(',');
-      };
-
+      // If title is updated, validate and update meta title
       if (title) {
-
-        if (!title.length) {  // Note: If you want to put title Length constraint, you can put that here itself
-          return res.status(400).json({
-            error: "Title can not be blank !"
-          });
+        if (!title.trim().length) {
+          return res.status(400).json({ error: "Title cannot be blank!" });
         }
-        else {
-          oldBlog.title = title;
-          oldBlog.mtitle = `${title} | ${process.env.APP_NAME}`; // blog new meta-title
-        }
-      };
+        oldBlog.title = title;
+        oldBlog.mtitle = `${title} | ${process.env.APP_NAME}`;
+      }
 
-
-      // console.log("Final Updated Blog =====>>", oldBlog);
-
-      //===============================================
-      // Handling Files (like Images/docs)
+      // Handle file uploads (Images)
       if (files.photo) {
-        // Validating 1 MB file restriction
         if (files.photo.size > 1048576) {
-          return res.status(400).json({
-            error: 'Image should be less than 1 MB in size.'
-          });
-        };
-        // If image size is les than 1 MB, then we can create a blog now.
-        // Check blog's photo model, it has "data" & "contentType" property
+          return res.status(400).json({ error: 'Image should be less than 1 MB in size.' });
+        }
         oldBlog.photo.data = readFileSync(files.photo.path);
         oldBlog.photo.contentType = files.photo.type;
+      }
 
-      };
-
-      // Save New updated (oldBlog) in DB Database 
-      oldBlog.save((err, result) => {
-        if (err) {
-          console.log('BLOG SAVE ERROR =====>>>>>>>', err);
-          return res.status(400).json({
-            error: errorHandler(err)
-          });
-        };
-
-        // This is just to prevent sending the Photo (heavy response) in the response back
-        // result.photo = undefined; 
-
-        res.json(result); // response with updated Blog
-
-      });
+      // Save the updated blog
+      const result = await oldBlog.save();
+      res.json(result);
     });
 
-  });
-
+  } catch (err) {
+    console.error('UPDATE BLOG ERROR:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
 }
+
 
 // -----------------------------------------------------
 
 // Photos middleware to get the Photos
-export function photo(req, res) {
-  const slug = req.params.slug.toLowerCase();
 
-  // db.blogs.findOne({slug: "blog-slug-here"}, {photo:1})
+export async function photo(req, res) {
   try {
-    Blog.findOne({ slug })  // where slug field ="blog-slug"
-      .select('photo')  // select this column 'photo' where the above findOne record is matched
-      // .lean() // It basically converts Mongoose documents into plain old JavaScript objects.
-      .exec((err, photoBlog) => {
+    const slug = req.params.slug.toLowerCase();
 
-        // Debugging Error
+    // Find the blog by slug and select only the photo field
+    const photoBlog = await Blog.findOne({ slug }).select('photo');
 
-        // console.log("err Object ---> " + err);
-        // console.log("blog object ---> " + photoBlog);
-        // console.log("blog object ID Check ---> " + photoBlog._doc._id); // MongooseObject._doc.<property>
-        // Note: Mongoose mongodb returned response Object is of different kind from plane JS object. You have to convert it to plane js Object. Check for ways to handle that issue [using .toObject() and using .lean() in db query but these will not help in case of media object, in that use you can access the properties using object._doc.<property>]
+    if (!photoBlog) {
+      return res.status(404).json({ error: "Wrong Slug / Blog doesn't exist" });
+    }
 
+    // If the blog exists but has no photo, return a placeholder response
+    if (!photoBlog.photo || Object.keys(photoBlog.photo).length === 0) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
 
-        // if (err || !photoBlog) {
-        if (err) {
-          console.log("Error occured while fetching Photo from backend");
-          return res.status(400).json({
-            error: errorHandler(err)
-          });
-        }
-
-        // If There's No Blog Found with that slug in the DB
-        else if (!photoBlog) {
-          // else if (photoBlog === null) {
-          return res.status(404).json({
-            error: "Wrong Slug / Blog doesn't exist"
-          });
-        }
-
-        // If Blog(without Photo) is found but it does not have any featured image. (here we'll only have '_id' property with ID data, but 'photo' property will be EMPTY)
-        // Send a PLACEHOLDER image if there's no default image present
-        else if (photoBlog._doc.hasOwnProperty('_id') && Object.keys(photoBlog._doc.photo).length === 0) {
-          /*
-          // console.log((Object.getOwnPropertyNames(photoBlog)));
-          // let result = photoBlog._doc.hasOwnProperty('_id');
-          // console.log(result);
-
-          // console.log(Object.keys(photoBlog._doc.photo).length === 0); // Check length (Empty Object) of object
-          */
-
-          // -------------------------------------
-          // console.log(`WARNING: No Featured Image present in this Blog. Please upload a photo in blog with id: ${photoBlog._doc._id} `);
-          // -------------------------------------
-
-          // throw new Error('something bad happened');
-
-          return res.status(404).send({ error: 'Image not found' });
-        }
-
-
-        // If Blog (with Photo) is found, sending the Photo
-        else {
-          // console.log("___ Inside else ___");
-
-          res.set('Content-Type', photoBlog.photo.contentType); // type of Data Content-type we will be sending back in response
-
-          return res.send(photoBlog.photo.data);
-        }
-      });
-
-  }
-
-  catch (errr) {
-    console.log("PHOTO ENDPOINT ERR => ", errr);
-    return res.send("No photo found");
+    // Set content type and send the image data
+    res.set('Content-Type', photoBlog.photo.contentType);
+    return res.send(photoBlog.photo.data);
+  } catch (err) {
+    console.error("PHOTO ENDPOINT ERROR =>", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 }
 
-// exports.photo = async (req, res) => {
+
+
+// export async function photo(req, res) {
 //   try {
 //     const slug = req.params.slug.toLowerCase();
-//     console.log("SLUG TO GET PHOTO => ", slug);
+//     console.log("SLUG TO GET PHOTO =>", slug);
 
-//     const blog = Blog.findOne({ slug }).select("photo").exec();
-//     res.set('Content-Type', blog.photo.contentType);
+//     // Fetch blog by slug and select only the photo field
+//     const blog = await Blog.findOne({ slug }).select("photo");
+
+//     if (!blog || !blog.photo || !blog.photo.data) {
+//       return res.status(404).json({ error: "Photo not found" });
+//     }
+
+//     // Set content type and send image data
+//     res.set("Content-Type", blog.photo.contentType);
 //     return res.send(blog.photo.data);
-//   } catch (err) {
-//     console.log("PHOTO ENDPOINT ERR => ", err);
-//     return res.send("No photo found");
-//   }
-// };
 
+//   } catch (err) {
+//     console.error("PHOTO ENDPOINT ERROR =>", err);
+//     return res.status(500).json({ error: "Internal Server Error" });
+//   }
+// }
 
 
 // -----------------------------------------------------
 // get Related Blogs
-export function listRelatedBlogs(req, res) {
-  let limit = req.body.limit ? parseInt(req.body.limit) : 3; // setting default number of related blogs to 3
+export async function listRelatedBlogs(req, res) {
+  try {
+    const limit = req.body.limit ? parseInt(req.body.limit) : 3; // Default limit is 3
 
-  const { _id, categories } = req.body.blog; // grabbing list of categories of the current blog from the request to find other blogs with similar category. blog '_id' is extracted to make sure we Exclude this blog from related blogs :P 
+    const { _id, categories } = req.body.blog; // Extract blog ID and categories to find related blogs
 
-  //  find({ _id: { $ne: _id }, categories: { $in: categories } }) ==> find blogs whose ID is not = '_id' (Excluding $ne the curent blog '_id'), Based on categories which are in the current blog's category list ( $in: categories )
-  // select .. . .  from Blogs where CATEGORIES in (currentblog categories...) where '_id' != _id;
+    // Find related blogs excluding the current one and matching categories
+    const blogs = await Blog.find({ _id: { $ne: _id }, categories: { $in: categories } })
+      .limit(limit)
+      .populate('postedBy', '_id name username profile')
+      .select('title slug excerpt postedBy createdAt updatedAt');
 
-  Blog.find({ _id: { $ne: _id }, categories: { $in: categories } })
-    .limit(limit)
-    .populate('postedBy', '_id name username profile')
-    .select('title slug excerpt postedBy createdAt updatedAt') // with Blog body (to get more content that excerpt in the related blogs card)
-    .exec((err, blogs) => {
-      if (err) {
-        return res.status(400).json({
-          error: 'Blogs not found'
-        });
-      }
-      res.json(blogs);
-    });
-};
+    res.json(blogs);
+  } catch (err) {
+    res.status(400).json({ error: 'Blogs not found' });
+  }
+}
 
 
 // ----------------------------------------------------
