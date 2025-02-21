@@ -401,41 +401,6 @@ export async function listRelatedBlogs(req, res) {
 // ----------------------------------------------------
 
 // Blog Search API middleware controller (Search Blogs)
-export function listSearch(req, res) {
-
-  try {
-
-    // console.log("Query received at the backend : ", req.query); // Look at the query string  passed from frontend to backend (here)
-
-    // grabbing the 'search' property/parameter from the request query object
-    // NOTE: req.query is converting the search URL like (?search=World%20Bekar%20Hai&pagination=10) into an object like ({search: "World Bekar Hai", pagination=10}) and we are grabbing the specific parameter out of that using { field }
-    const { search } = req.query; // request query will have search object coming from frontend
-
-
-    // '$or' OR function in mongoose helps us by looking/searching either in title OR in Body (passing all fields to search through in the array). 
-    // "$regex" REGEX function in mongoose has $options , 'i' means IGNORE CASE SENSTIVE 
-    if (search) {
-      Blog.find({
-        $or: [{ title: { $regex: search, $options: 'i' } }, { body: { $regex: search, $options: 'i' } }]
-      }, (err, blogs) => {
-        if (err) {
-          return res.status(400).json({
-            error: errorHandler(err)
-          });
-        }
-
-        res.json(blogs);
-
-      }).select('-photo -body'); // Deselecting Photos & Body from the blog object , because they are heavy!
-    }
-  }
-  catch (err) {
-    console.error(error.message);
-    res.status(500).send("Sever Error");
-  }
-
-}
-
 export async function listSearch(req, res) {
   try {
     // console.log("Query received at the backend : ", req.query); // Look at the query string  passed from frontend to backend (here)
