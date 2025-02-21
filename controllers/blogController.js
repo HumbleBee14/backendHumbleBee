@@ -436,6 +436,41 @@ export function listSearch(req, res) {
 
 }
 
+export async function listSearch(req, res) {
+  try {
+    // console.log("Query received at the backend : ", req.query); // Look at the query string  passed from frontend to backend (here)
+    
+    // grabbing the 'search' property/parameter from the request query object
+    // NOTE: req.query is converting the search URL like (?search=World%20Bekar%20Hai&pagination=10) into an object like ({search: "World Bekar Hai", pagination=10}) and we are grabbing the specific parameter out of that using { field }
+
+    // Extracting the search term from the request query
+    const { search } = req.query;
+
+    // '$or' OR function in mongoose helps us by looking/searching either in title OR in Body (passing all fields to search through in the array). 
+    // "$regex" REGEX function in mongoose has $options , 'i' means IGNORE CASE SENSTIVE 
+
+    // If search term is missing or empty, return an empty array
+    if (!search || search.trim().length === 0) {
+      return res.json([]); // Return an empty array instead of an error
+    }
+
+    // Perform case-insensitive search in the title OR body
+    const blogs = await Blog.find({
+      $or: [
+        { title: { $regex: search, $options: "i" } },
+        { body: { $regex: search, $options: "i" } }
+      ]
+    }).select("-photo -body"); // Exclude heavy fields (Deselecting Photos & Body from the blog object , because they are heavy!)
+
+    return res.json(blogs); // Return found blogs
+
+  } catch (err) {
+    console.error("SEARCH ERROR:", err.message);
+    return res.status(500).json({ error: "Server Error. Please try again later." });
+  }
+}
+
+
 // -------------------------------------------------------------------------------------------------------------------
 
 
