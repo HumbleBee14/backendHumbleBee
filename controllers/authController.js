@@ -291,13 +291,15 @@ export async function forgotPassword(req, res) {
     user.resetPasswordLink = token;
     await user.save(); // Update user document in the database
 
-    // Send the reset email using Nodemailer
-    await sendEmailWithNodemailer(req, res, emailData);
-
-    return res.json({
-      success: true,
-      message: `A password reset link has been sent to ${email}. Please follow the instructions.`,
-    });
+    // Send the reset email using Nodemailer, and handle errors
+    try {
+      await sendEmailWithNodemailer(req, res, emailData);
+    } catch (emailError) {
+      console.error("EMAIL SENDING ERROR:", emailError);
+      return res.status(502).json({
+        error: "Failed to send email. Please try again later.",
+      });
+    }
 
   } catch (err) {
     console.error("FORGOT PASSWORD ERROR:", err);
