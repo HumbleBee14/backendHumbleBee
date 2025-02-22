@@ -3,7 +3,7 @@ const router = Router();
 
 import { requireSignin, authMiddleware } from '../controllers/authController.js';
 import { read, publicProfile, update, photo } from '../controllers/userController.js';
-
+ 
 // Private Profile
 router.get('/user/profile', requireSignin, authMiddleware, read); // For Private Profile (for Update/Delete, for user to manage his profile )
 // router.get('/profile', requireSignin, adminMiddleware, read);

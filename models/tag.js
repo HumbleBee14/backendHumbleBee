@@ -1,4 +1,23 @@
 // Tag < Model >
+import mongoose from 'mongoose';
+const { Schema, model } = mongoose;
+
+const tagSchema = new Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    maxLength: 32
+  },
+  slug: {
+    type: String,
+    unique: true,
+    index: true
+  }
+}, { timestamps: true });
+
+export default model('Tag', tagSchema);
+
 
 /*
 tag create list read delete (remove)
@@ -10,27 +29,3 @@ tag create list read delete (remove)
 >>>>> controllers
 
 */
-
-// import { Schema, model } from 'mongoose';
-
-import mongoose, { model } from 'mongoose';
-const { Schema } = mongoose;
-
-const tagSchema = new Schema({
-
-  name: {
-    type: String,
-    require: true,
-    trim: true,
-    maxLength: 32
-  },
-
-  slug: {
-    type: String,
-    unique: true,
-    index: true
-  }
-
-}, { timestamp: true });
-
-export default model('Tag', tagSchema);

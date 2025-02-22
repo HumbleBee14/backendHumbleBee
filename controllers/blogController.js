@@ -7,7 +7,7 @@ import formidable from 'formidable';  // To handle parsing form data, especially
 import { readFileSync } from 'fs';
 import _ from 'lodash';
 import slugify from 'slugify';
-
+import mongoose from "mongoose";
 import Category from '../models/category.js';
 import Tag from '../models/tag.js';
 import User from '../models/user.js';
@@ -36,75 +36,155 @@ process.on('uncaughtException', err => {
 
 export async function create(req, res) {
   try {
-    let form = new formidable.IncomingForm();
-    form.keepExtensions = true;
+    const form = formidable({ keepExtensions: true });
 
-    // Parse the form data
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        return res.status(400).json({ error: 'Image could not be uploaded' });
-      }
+    // Parse the form data asynchronously
+    const [fields, files] = await form.parse(req);
 
-      // Extracting required fields
-      const { title, body, categories, tags } = fields;
+    // Extracting required fields and converting array fields to strings
+    const title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
+    const body = Array.isArray(fields.body) ? fields.body[0] : fields.body;
+    const categories = Array.isArray(fields.categories) ? fields.categories[0] : fields.categories;
+    const tags = Array.isArray(fields.tags) ? fields.tags[0] : fields.tags;
 
-      // Manual validation checks
-      if (!title || !title.length) return res.status(400).json({ error: 'Title is required' });
-      if (!body || body.length < 200) return res.status(400).json({ error: 'Content is too short for a blog.' });
-      if (!categories || categories.length === 0) return res.status(400).json({ error: 'At least one category is required.' });
-      if (!tags || tags.length === 0) return res.status(400).json({ error: 'At least one tag is required.' });
+    // Manual validation checks
+    if (!title || !title.length) return res.status(400).json({ error: "Title is required" });
+    if (!body || body.length < 200) return res.status(400).json({ error: "Content is too short for a blog." });
+    if (!categories || categories.length === 0) return res.status(400).json({ error: "At least one category is required." });
+    if (!tags || tags.length === 0) return res.status(400).json({ error: "At least one tag is required." });
 
-      // Creating a new blog instance
-      let blog = new Blog({
-        title,
-        body,
-        // excerpt = smartTrim(body, 320, ' ', ' ...'), // Author's trim method
-        excerpt: htmlToTextTrimWithEllipses(body, 320), // Generating an excerpt - My own trim method (ignores href)
-        // slug: slugify(title, { lower: true, strict: true }),
-
-        slug: slugify(title)
+    // Creating a new blog instance
+    let blog = new Blog({
+      title,
+      body,
+      excerpt: htmlToTextTrimWithEllipses(body, 320), // Generating an excerpt
+      slug: slugify(title)
         .toLowerCase()
         .trim()
-        .replace(/[^\w\s-]/g, '') // Remove non-word characters except spaces and hyphens
-        .replace(/[\s_-]+/g, '-') // Replace spaces, underscores, or multiple hyphens with a single hyphen
-        .replace(/^-+|-+$/g, ''), // Remove leading or trailing hyphens
-        // .replace(/['"]+/g, ''),
-
-        mtitle: `${title} | ${process.env.APP_NAME}`, // Meta title
-        mdesc: stripHtml(body.substring(0, 160)).result, // Meta description - we are extracting metadescription from blog's first 160 characters
-        postedBy: req.user._id, // Logged-in user ID
-      });
-
-      // Convert category and tag strings to arrays
-      let arrayOfCategories = categories.split(',');
-      let arrayOfTags = tags.split(',');
-
-      // Handling image uploads
-      if (files.photo) {
-        if (files.photo.size > 1048576) {
-          return res.status(400).json({ error: 'Image should be less than 1 MB in size.' });
-        }
-        blog.photo.data = readFileSync(files.photo.path);
-        blog.photo.contentType = files.photo.type;
-      }
-
-      // Save blog to the database
-      const savedBlog = await blog.save();
-
-      // Push categories and tags after saving
-      await Blog.findByIdAndUpdate(savedBlog._id, { $push: { categories: arrayOfCategories } }, { new: true });
-      const updatedBlog = await Blog.findByIdAndUpdate(savedBlog._id, { $push: { tags: arrayOfTags } }, { new: true });
-
-      res.json(updatedBlog);
+        .replace(/[^\w\s-]/g, "") // Remove non-word characters except spaces and hyphens
+        .replace(/[\s_-]+/g, "-") // Replace spaces, underscores, or multiple hyphens with a single hyphen
+        .replace(/^-+|-+$/g, ""), // Remove leading or trailing hyphens
+      mtitle: `${title} | ${process.env.APP_NAME}`, // Meta title
+      mdesc: stripHtml(body.substring(0, 160)).result, // Meta description
+      postedBy: req.user._id, // Logged-in user ID
     });
+
+    // Convert category and tag strings to arrays
+    let arrayOfCategories = categories.split(",");
+    let arrayOfTags = tags.split(",");
+
+    // Handling image uploads
+    if (files.photo) {
+      if (files.photo.size > 1048576) {
+        return res.status(400).json({ error: "Image should be less than 1 MB in size." });
+      }
+      blog.photo.data = readFileSync(files.photo.filepath); // ✅ Corrected property name for formidable v2+
+      blog.photo.contentType = files.photo.mimetype; // ✅ Corrected property name
+    }
+
+    // Save blog to the database
+    const savedBlog = await blog.save();
+
+    // Push categories and tags after saving
+    await Blog.findByIdAndUpdate(savedBlog._id, { $push: { categories: arrayOfCategories } }, { new: true });
+    const updatedBlog = await Blog.findByIdAndUpdate(savedBlog._id, { $push: { tags: arrayOfTags } }, { new: true });
+
+    res.json(updatedBlog);
   } catch (err) {
-    console.error('CREATE BLOG ERROR:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    console.error("CREATE BLOG ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 }
 
 
+
 // NOTE: We had used type: 'ObjectId' in Models for category, tags, and users for a reason, to so that we can access those collections from another Models -like here from blog Model, using 'populate()'
+
+// ---------------------------------------------------------------------------------------------------------------
+
+//-----------------------------------------------------
+// Update Blog is similar to 'Create' function
+
+export async function update(req, res) {
+  try {
+    const slug = req.params.slug.toLowerCase();
+    let oldBlog = await Blog.findOne({ slug });
+
+    if (!oldBlog) {
+      return res.status(404).json({ error: "Blog not found" });
+    }
+
+    let form = formidable({ keepExtensions: true });
+
+    form.parse(req, async (err, fields, files) => {
+      if (err) return res.status(400).json({ error: "Image could not upload" });
+
+      let slugBeforeMerge = oldBlog.slug;
+
+      // ✅ Ensure proper formatting for fields
+      const title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
+      const body = Array.isArray(fields.body) ? fields.body[0] : fields.body;
+      let categories = fields.categories;
+      let tags = fields.tags;
+
+      if (categories) {
+        try {
+          const parsedCategories = JSON.parse(categories);
+          if (Array.isArray(parsedCategories)) {
+            categories = parsedCategories.map((id) => new mongoose.Types.ObjectId(id));
+          } else {
+            return res.status(400).json({ error: "Invalid categories format" });
+          }
+        } catch (error) {
+          return res.status(400).json({ error: "Categories parsing error" });
+        }
+      }
+
+      if (tags) {
+        try {
+          const parsedTags = JSON.parse(tags);
+          if (Array.isArray(parsedTags)) {
+            tags = parsedTags.map((id) => new mongoose.Types.ObjectId(id));
+          } else {
+            return res.status(400).json({ error: "Invalid tags format" });
+          }
+        } catch (error) {
+          return res.status(400).json({ error: "Tags parsing error" });
+        }
+      }
+
+      // ✅ Merge updated fields with the existing blog
+      oldBlog = _.merge(oldBlog, { title, body, categories, tags });
+      oldBlog.slug = slugBeforeMerge; // Preserve original slug
+
+      // ✅ Update excerpt & meta-description if body is updated
+      if (body) {
+        oldBlog.excerpt = body.substring(0, 320);
+        oldBlog.mdesc = body.substring(0, 160);
+      }
+
+      // ✅ Handle Image Upload
+      if (files.photo) {
+        if (files.photo.size > 1048576) {
+          return res.status(400).json({ error: "Image should be less than 1 MB in size." });
+        }
+        oldBlog.photo.data = readFileSync(files.photo.filepath);
+        oldBlog.photo.contentType = files.photo.mimetype;
+      }
+
+      // ✅ Save the updated blog
+      const result = await oldBlog.save();
+      res.json(result);
+    });
+  } catch (err) {
+    console.error("UPDATE BLOG ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+
+// ---------------------------------------------------------------------------------------------------------------
+
 
 /*
 // Populate()
@@ -238,7 +318,7 @@ export async function remove(req, res) {
     const slug = req.params.slug.toLowerCase();
 
     // Find and delete the blog by slug
-    const deletedBlog = await Blog.findOneAndRemove({ slug });
+    const deletedBlog = await Blog.findOneAndDelete({ slug });
 
     if (!deletedBlog) {
       return res.status(404).json({ error: "No Blog exists. Please check" });
@@ -248,77 +328,6 @@ export async function remove(req, res) {
   } catch (err) {
     console.error("DELETE BLOG ERROR:", err);
     return res.status(500).json({ error: "Internal Server Error" });
-  }
-}
-
-
-
-
-//-----------------------------------------------------
-// Update Blog is similar to 'Create' function
-
-export async function update(req, res) {
-  try {
-    const slug = req.params.slug.toLowerCase();
-
-    // Find the blog by slug
-    let oldBlog = await Blog.findOne({ slug });
-
-    if (!oldBlog) {
-      return res.status(404).json({ error: "Blog not found" });
-    }
-
-    let form = new formidable.IncomingForm();
-    form.keepExtensions = true;
-
-    // Parse the form data
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        return res.status(400).json({ error: 'Image could not upload' });
-      }
-
-      let slugBeforeMerge = oldBlog.slug; // Preserve slug to avoid SEO issues
-      oldBlog = _.merge(oldBlog, fields); // Merge new fields with existing blog
-      oldBlog.slug = slugBeforeMerge; // Ensure slug remains unchanged
-
-      const { title, body, categories, tags } = fields;
-
-      // If body is updated, update excerpt and meta description
-      if (body) {
-        oldBlog.excerpt = htmlToTextTrimWithEllipses(body, 320);
-        oldBlog.mdesc = stripHtml(body.substring(0, 160)).result;
-      }
-
-      // If categories/tags are updated, convert them into an array
-      if (categories) oldBlog.categories = categories.split(',');
-      if (tags) oldBlog.tags = tags.split(',');
-
-      // If title is updated, validate and update meta title
-      if (title) {
-        if (!title.trim().length) {
-          return res.status(400).json({ error: "Title cannot be blank!" });
-        }
-        oldBlog.title = title;
-        oldBlog.mtitle = `${title} | ${process.env.APP_NAME}`;
-      }
-
-      // Handle file uploads (Images)
-      if (files.photo) {
-        if (files.photo.size > 1048576) {
-          return res.status(400).json({ error: 'Image should be less than 1 MB in size.' });
-        }
-        oldBlog.photo.data = readFileSync(files.photo.path);
-        oldBlog.photo.contentType = files.photo.type;
-      }
-
-      // Save the updated blog
-      const result = await oldBlog.save();
-      res.json(result);
-    });
-
-  } catch (err) {
-    console.error('UPDATE BLOG ERROR:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
 

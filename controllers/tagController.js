@@ -40,7 +40,7 @@ export async function create(req, res) {
 }
 
 // --------------------------------------------
-
+ 
 // to get list of all tags
 export async function list(req, res) {
   try {
@@ -92,7 +92,7 @@ export async function remove(req, res) {
     const slug = req.params.slug.toLowerCase();
 
     // Find and delete the tag by slug
-    const deletedTag = await Tag.findOneAndRemove({ slug });
+    const deletedTag = await Tag.findOneAndDelete({ slug });
 
     if (!deletedTag) {
       return res.status(404).json({ error: 'Tag not found' });

@@ -1,82 +1,58 @@
 // BLOG < Model >
-import mongoose, { model } from 'mongoose';
-const { Schema } = mongoose;
-
-const { ObjectId } = Schema;
-// https://docs.mongodb.com/manual/reference/method/ObjectId/
+import mongoose from 'mongoose';
+const { Schema, model } = mongoose;
 
 const blogSchema = new Schema(
   {
-
     title: {
       type: String,
       trim: true,
       minLength: 3,
       maxLength: 160,
-      // unique: true, // You don't need Unique title, but Unique Slug
       index: true,
       required: true
     },
-
     slug: {
       type: String,
-      unique: true, // Slug should be unique, as we will query the DB using slug only, therefore index=true
+      unique: true,
       index: true
     },
-
     body: {
-      type: {}, // Note: Empty object means you can store all kinds of data
+      type: {}, // Allows storing any type of body content
       required: true,
-      minLength: 200, // minimum 200 characters long
-      maxLength: 2000000 // Note: Maximum allowed 2MB = 2000000
+      minLength: 200,
+      maxLength: 2000000
     },
-
     excerpt: {
       type: String,
-      // required: true,
       maxLength: 1000
     },
-
-    // Meta Title (useful for SEO)
-    mtitle: {
-      type: String
-    },
-
-    // Meta Description (useful for SEO)
-    mdesc: {
-      type: String
-    },
-
+    mtitle: { type: String }, // Meta Title (SEO)
+    mdesc: { type: String }, // Meta Description (SEO)
     photo: {
       data: Buffer,
       contentType: String
     },
-
-
-    // Categories = ARRAY of categories.
-
-    categories: [{ type: ObjectId, ref: 'Category', required: true }],
-
-    // Each Blog will have = ARRAY of tags
-    tags: [{ type: ObjectId, ref: 'Tag', required: true }],
-
+    categories: [{
+      type: Schema.Types.ObjectId,  // Array of ObjectId
+      ref: 'Category',
+      required: true
+    }],
+    tags: [{
+      type: Schema.Types.ObjectId,  // Array of ObjectId
+      ref: 'Tag',
+      required: true
+    }],
     postedBy: {
-      type: ObjectId,
+      type: Schema.Types.ObjectId,
       ref: 'User'
     }
-
-    // lastUpdatedBy: {
-    //   type: ObjectId,
-    //   ref: 'User'
-    // }
-
-  }, { timestamps: true }
+  },
+  { timestamps: true }
 );
 
-
-
-
 export default model('Blog', blogSchema);
+
 
 // mongoose.model('Blog', blogSchema) --> here 'Blog' is the Model name we are setting for the model we created - 'blogSchema'
 

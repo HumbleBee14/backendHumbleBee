@@ -47,10 +47,6 @@ export async function list(req, res) {
     // Fetch all categories from the database
     const categories = await Category.find({});
 
-    if (!categories.length) {
-      return res.json({ message: "No categories found", categories: [] });
-    }
-
     res.json(categories);
   } catch (err) {
     console.error("CATEGORY LIST ERROR:", err);
@@ -97,7 +93,7 @@ export async function remove(req, res) {
     const slug = req.params.slug.toLowerCase();
 
     // Find and delete the category by slug
-    const deletedCategory = await Category.findOneAndRemove({ slug });
+    const deletedCategory = await Category.findOneAndDelete({ slug });
 
     if (!deletedCategory) {
       return res.status(404).json({ error: 'Category not found' });
