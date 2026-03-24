@@ -1,176 +1,150 @@
-# npm install express mongoose body-parser cookie-parser morgan nodemon dotenv cors
+# Multi-User Blogging Platform - Backend
 
-# npm i express-validator jsonwebtoken express-jwt formidable lodash slugify string-strip-html
+REST API backend for a multi-user blogging platform with role-based access control, SEO optimization, and Google OAuth integration.
 
-// Start Application:
+## Tech Stack
 
-    "dev": "nodemon server.js",   => local -> npm dev
-    "start": "node server.js"     => Production -> npm start
+- **Runtime:** Node.js (ES Modules)
+- **Framework:** Express.js
+- **Database:** MongoDB (Mongoose ODM)
+- **Auth:** JWT + Google OAuth
+- **Email:** Nodemailer (SMTP)
+- **Image Processing:** Sharp
+- **Validation:** express-validator
 
-## Atlas - pk321...
+## Features
 
-// https://kaloraat.com/articles/how-to-use-mongodb-atlas
+- User registration with email verification (account activation flow)
+- JWT-based authentication with role-based access (admin/user)
+- Google OAuth login
+- Password reset via email
+- Blog CRUD with rich text, categories, tags, and featured images
+- SEO support (slugs, meta titles, meta descriptions)
+- Blog search and related posts
+- User profiles (public and private)
+- Contact form and author messaging
+- Image compression and optimization
 
-Mongo Atlas
+## Project Structure
 
 ```
-ID: testUser
-PW: testUserPassword
-
+controllers/     # Route handlers and business logic
+routes/          # API route definitions
+models/          # Mongoose schemas (User, Blog, Category, Tag)
+validators/      # Input validation middleware
+helpers/         # Utility functions (email, error handling)
+server.js        # Express app entry point
 ```
 
-////////////// Adding USER Profiles ///////////////////
+## API Endpoints
 
-1. create a 'route' in routes for public user profile
-2. Then add/create a middleware function to handle the requests on that route in the - user Controller & give the response through that middleware (this middleware will handle calls to database)
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/preSignup` | Pre-signup with email verification |
+| POST | `/api/signup` | Complete registration |
+| POST | `/api/signin` | Login |
+| GET | `/api/signout` | Logout |
+| PUT | `/api/forgot-password` | Request password reset |
+| PUT | `/api/reset-password` | Reset password with token |
+| POST | `/api/google-login` | Google OAuth login |
 
-// In Frontend ////
+### Blogs
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/blog` | Admin | Create blog |
+| GET | `/api/blogs` | - | List all blogs |
+| POST | `/api/blogs-categories-tags` | - | List with filters/pagination |
+| GET | `/api/blog/:slug` | - | Get blog by slug |
+| PUT | `/api/blog/:slug` | Admin | Update blog |
+| DELETE | `/api/blog/:slug` | Admin | Delete blog |
+| GET | `/api/blogs/search` | - | Search blogs |
+| POST | `/api/blogs/related` | - | Related blogs |
+| POST | `/api/user/blog` | User | Create blog (auth user) |
+| GET | `/api/:username/blogs` | - | Blogs by user |
+| PUT | `/api/user/blog/:slug` | User | Update own blog |
+| DELETE | `/api/user/blog/:slug` | User | Delete own blog |
 
-1. Create Action for user Public profile which will Fetch the user public profile API (GET request to the 'route' created in backend)
-2. Create a Page for the Public Profile (which will call the action)
+### Categories & Tags
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/category` | Admin | Create category |
+| GET | `/api/categories` | - | List categories |
+| GET | `/api/category/:slug` | - | Category with blogs |
+| DELETE | `/api/category/:slug` | Admin | Delete category |
+| POST | `/api/tag` | Admin | Create tag |
+| GET | `/api/tags` | - | List tags |
+| GET | `/api/tag/:slug` | - | Get tag |
+| DELETE | `/api/tag/:slug` | Admin | Delete tag |
 
-// ------------------------------------------
-CONTACT-US EMAIL VALIDATOR:
+### Users
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/user/profile` | User | Private profile |
+| GET | `/api/user/:username` | - | Public profile |
+| PUT | `/api/user/update` | User | Update profile |
 
-- GMAIL used
+### Other
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/contact` | Contact form |
+| POST | `/api/contact-blog-author` | Message author |
 
---> Added EMAIL PROVIDER API Key in backend .env file
---> Created a Contact Form VALIDATOR (name, email, message)
---> Created a route for form
+## Getting Started
 
-// #####################################################################
+### Prerequisites
 
-# ERRORS
+- Node.js (v16+)
+- MongoDB instance (local or Atlas)
 
-// -------------------------------------------------------
-Error: self signed certificate in certificate chain (in nodemailer email)
+### Installation
 
-Problem: This error occures on nodemailer when unable to send email due to some isue
-Soution: Check config SMTP, or if runnin on localmachine, DISABLE TURN OFF ANTIVIRUS (prevents scripts to send email)
-// -------------------------------------------------------
+```bash
+git clone <repo-url>
+cd backendHumbleBee
+npm install
+```
 
-// -------------------------------------------------------
-// -------------------------------------------------------
+### Environment Variables
 
-# Things to check while deploying app from local to Production on hosting services
+Create a `.env` file in the root directory:
 
--> Change CLIENT_URL in the environment file / config files .env
--> apply CORS (for your domain)
--> Change DATABASE connection details in backend code.
--> Change and Update commenting system (DISQUS) keys and all that
--> Change and update new EMAIL CLIENT Keys/config in the environment file for mail
--> GOOGLE_CLIENT_ID -> used for linking Google Login form on signin page
--> GOOGLE ANALYTICS KEY in config (on Frontend only)
+```env
+NODE_ENV=development
+PORT=8000
+CLIENT_URL=http://localhost:3000
 
--> Check ports opend and set environment = Production (backend) and set PRODUCTION: true on frontend in config files
--> Update FB_APP_ID for SEO optmization
-// ---------------------------------------------------
+# Database
+DATABASE_LOCAL=mongodb://localhost:27017/your-db
+# DATABASE_CLOUD=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/<db>
 
-=======================================================
+# JWT
+JWT_SECRET=your-jwt-secret
+JWT_ACCOUNT_ACTIVATION_SECRET=your-activation-secret
+JWT_RESET_PASSWORD=your-reset-secret
 
-# Configure Nginx on AWS to redirect Frontnend & Backend server requests to Correct Ports
+# Email (SMTP)
+EMAIL_TO=your-email@example.com
+EMAIL_FROM=noreply@yourdomain.com
+EMAIL_USER=your-email@example.com
+EMAIL_PASS=your-app-password
 
-## Install Nginx -> sudo apt install nginx
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+```
 
-## Nginx Server ERROR Logs: /var/log/nginx -----> error.log
+### Run
 
-# Edit this file: default -> /etc/nginx/sites-available/default
+```bash
+# Development (with auto-reload)
+npm run dev
 
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
+# Production
+npm start
+```
 
-    location /api {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
+The server runs on `http://localhost:8000` by default.
 
-Then restart nginx server:
-`sudo service nginx restart`
+## License
 
-// -----------------------------------------------------------
-
-// On code change, Pull the code on server using git:
-
-on Local Dev Machine:
-`git status`
-`git add .`
-`git commit -m "message"`
-`git push`
-
-on AWS :
-`git pull` (run this where the code is changed- backend or frontend)
-
-=====================================================================================
-
-# Nginx server settings:
-
----
-
-Refer: https://scaron.info/blog/improve-your-nginx-ssl-configuration.html
-// -----------------------------------------------------------------------
-
-# Default server configuration
-
-#
-
-server {
-listen 80 default_server;
-listen [::]:80 default_server;
-
-# server_name humblebee.live www.humblebee.live;
-
-# Redirect http to https (Disable it if you are using Cloudflare HTTPS redirect)
-
-# return 301 https://$server_name$request_uri;
-
-# return 301 https://$host$request_uri;
-
-        # SSL configuration
-        #
-         listen 443 ssl http2 default_server;
-         listen [::]:443 ssl http2 default_server;
-        #
-
-        ssl_certificate /etc/nginx/ssl/certs/humblebee.pem;
-        ssl_certificate_key /etc/nginx/ssl/private/humblebeeKEY.pem;
-
-        # Note: You should disable gzip for SSL traffic.
-
-        root /var/www/html;
-
-        # Add index.php to the list if you are using PHP
-        index index.html index.htm index.nginx-debian.html;
-
-        server_name _;
-
-location /api {
-proxy_pass http://localhost:8000;
-proxy_http_version 1.1;
-proxy_set_header Upgrade $http_upgrade;
-proxy_set_header Connection 'upgrade';
-proxy_set_header Host $host;
-proxy_cache_bypass $http_upgrade;
-}
-
-location / {
-proxy_pass http://localhost:3000;
-proxy_http_version 1.1;
-proxy_set_header Upgrade $http_upgrade;
-proxy_set_header Connection 'upgrade';
-proxy_set_header Host $host;
-proxy_cache_bypass $http_upgrade;
-}
-
-}
-
-# //--------------------------------------------------------------
+ISC
