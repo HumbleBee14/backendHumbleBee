@@ -121,7 +121,7 @@ export async function update(req, res) {
 
       let slugBeforeMerge = oldBlog.slug;
 
-      // ✅ Ensure proper formatting for fields
+      // Ensure proper formatting for fields
       const title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
       const body = Array.isArray(fields.body) ? fields.body[0] : fields.body;
       let categories = fields.categories;
@@ -153,17 +153,17 @@ export async function update(req, res) {
         }
       }
 
-      // ✅ Merge updated fields with the existing blog
+      //  Merge updated fields with the existing blog
       oldBlog = _.merge(oldBlog, { title, body, categories, tags });
       oldBlog.slug = slugBeforeMerge; // Preserve original slug
 
-      // ✅ Update excerpt & meta-description if body is updated
+      // Update excerpt & meta-description if body is updated
       if (body) {
         oldBlog.excerpt = body.substring(0, 320);
         oldBlog.mdesc = body.substring(0, 160);
       }
 
-      // ✅ Handle Image Upload
+      //  Handle Image Upload
       if (files.photo) {
         if (files.photo.size > 1048576) {
           return res.status(400).json({ error: "Image should be less than 1 MB in size." });
@@ -172,7 +172,7 @@ export async function update(req, res) {
         oldBlog.photo.contentType = files.photo.mimetype;
       }
 
-      // ✅ Save the updated blog
+      // Save the updated blog
       const result = await oldBlog.save();
       res.json(result);
     });
